@@ -1,0 +1,56 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@600;700&family=Space+Mono:wght@400;700&display=swap");
+
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+
+    @layer base {
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --primary: 243.4 75.4% 58.6%;
+        --primary-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --radius: 0.75rem;
+      }
+    }
+
+    @layer utilities {
+      .print-only {
+        display: none;
+      }
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .print\:block, .print\:block * {
+        visibility: visible;
+      }
+      .print\:block {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+      @page {
+        margin: 0;
+        size: auto;
+      }
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #cbd5e1;
+    }
