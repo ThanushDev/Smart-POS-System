@@ -142,7 +142,7 @@ const Dashboard = () => {
             <div className="mt-12 bg-white/10 p-6 rounded-[2rem] border border-white/10">
               <p className="text-[10px] font-black uppercase tracking-widest opacity-60">System Message</p>
               <p className="mt-2 text-sm font-medium">
-                {loading ? "Syncing with Database..." : "Your Digi Solutions POS is connected to MongoDB and syncing live."}
+                {loading ? "Syncing with Database..." : "Your Digi Solutions POS System is Working."}
               </p>
             </div>
           </div>
