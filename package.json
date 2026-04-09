@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
   "dev": "vite",
-  "build": "vite build", // "tsc && vite build" වෙනුවට මෙය පමණක් භාවිතා කරන්න
+  "build": "vite build",
   "preview": "vite preview"
 }
   "dependencies": {
