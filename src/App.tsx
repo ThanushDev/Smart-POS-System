@@ -5,7 +5,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// '@' භාවිතා කර src/pages වෙත යොමු කිරීම
+// Import path වල අකුරු GitHub එකේ ඇති File names වලට ගැලපෙන සේ සකසා ඇත
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Dashboard from '@/pages/Dashboard';
@@ -25,7 +25,6 @@ const App: React.FC = () => {
             <Route path="/" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            {/* Sidebar එකේ links වලට ගැලපෙන සේ path සකසා ඇත */}
             <Route path="/Dashboard" element={<Dashboard />} />
             <Route path="/NewBill" element={<NewBill />} />
             <Route path="/Inventory" element={<Inventory />} />
