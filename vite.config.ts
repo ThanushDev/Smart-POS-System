@@ -4,13 +4,20 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
-  root: '.', // ව්‍යාපෘතියේ මූලික ෆෝල්ඩරය Root එක බව පවසන්න
-  build: {
-    outDir: 'dist',
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      // මෙය එක් කරන්න, එවිට errors පෙන්වනු ඇත
+      onwarn(warning, warn) {
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
+        warn(warning);
+      },
     },
   },
 });
