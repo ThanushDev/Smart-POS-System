@@ -30,6 +30,7 @@
     "tailwindcss-animate": "^1.0.7",
     "vite": "^7.1.6",
     "zod": "^3.23.8",
+    "mongoose": "^8.0.0",
     "@supabase/supabase-js": "^2.57.4"
   },
   "devDependencies": {
