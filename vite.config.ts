@@ -4,15 +4,13 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  root: '.', // ව්‍යාපෘතියේ මූලික ෆෝල්ඩරය Root එක බව පවසන්න
+  build: {
+    outDir: 'dist',
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
- // vite.config.ts ඇතුළත
-build: {
-  outDir: 'dist',
-  minify: false, // Error එක සොයාගන්නා තුරු minify අක්‍රිය කරන්න
-  sourcemap: true,
-},
 });
