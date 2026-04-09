@@ -6,15 +6,15 @@ import 'react-toastify/dist/ReactToastify.css';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Import Pages (ඔබේ src/pages folder එකේ ඇති පරිදි)
-import Login from './src/pages/Login';
-import Register from './src/pages/Register';
-import Dashboard from './src/pages/Dashboard';
-import NewBill from './src/pages/NewBill';
-import Inventory from './src/pages/Inventory';
-import Invoice from './src/pages/Invoice';
-import Report from './src/pages/Report';
-import Accounts from './src/pages/Accounts';
-import NotFound from './src/pages/NotFound';
+import Login from '/src/pages/Login';
+import Register from '/src/pages/Register';
+import Dashboard from '/src/pages/Dashboard';
+import NewBill from '/src/pages/NewBill';
+import Inventory from '/src/pages/Inventory';
+import Invoice from '/src/pages/Invoice';
+import Report from '/src/pages/Report';
+import Accounts from '/src/pages/Accounts';
+import NotFound from '/src/pages/NotFound';
 
 const App: React.FC = () => {
   return (
