@@ -12,7 +12,7 @@ const Inventory = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Database එකෙන් දත්ත ලබා ගැනීම (GET Request)
+  // Database එකෙන් දත්ත ලබා ගැනීම
   const fetchProducts = async () => {
     try {
       const response = await fetch('/api/products');
@@ -42,7 +42,6 @@ const Inventory = () => {
     }
   };
 
-  // 2. Database එකට දත්ත යැවීම (POST/PUT/DELETE Requests)
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -52,14 +51,13 @@ const Inventory = () => {
       code: editingProduct ? editingProduct.code : `PRD-${Math.floor(1000 + Math.random() * 9000)}`,
       qty: Number(formData.get('qty')),
       price: Number(formData.get('price')),
-      image: productImage || (editingProduct ? editingProduct.image : 'https://placehold.co/400x400')
+      image: productImage || (editingProduct ? editingProduct.image : '') // Placeholder ඉවත් කරන ලදී
     };
 
     try {
       const url = '/api/products';
       const method = editingProduct ? 'PUT' : 'POST';
       
-      // Editing නම් ID එක path එකට එක් කිරීම (භාවිතා කරන API එක අනුව)
       const response = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
@@ -68,7 +66,7 @@ const Inventory = () => {
 
       if (response.ok) {
         toast.success(editingProduct ? "Product updated successfully!" : "Product added successfully!");
-        fetchProducts(); // දත්ත අලුත් කිරීම
+        fetchProducts();
         closeModal();
       } else {
         toast.error("Something went wrong!");
@@ -153,11 +151,19 @@ const Inventory = () => {
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr><td colSpan={5} className="px-6 py-4 text-center text-slate-400">Loading inventory...</td></tr>
+              ) : filteredProducts.length === 0 ? (
+                <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-400">No products found. Add your first product to get started.</td></tr>
               ) : filteredProducts.map((product) => (
                 <tr key={product._id || product.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover border border-slate-100" />
+                      {product.image ? (
+                         <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover border border-slate-100" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                          <ImageIcon size={20} />
+                        </div>
+                      )}
                       <span className="font-medium text-slate-900">{product.name}</span>
                     </div>
                   </td>
