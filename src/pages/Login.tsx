@@ -94,7 +94,7 @@ const Login = () => {
             <div className="mt-8 pt-6 border-t border-slate-50 text-center">
               <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-3">New to the system?</p>
               <button 
-                onClick={() => window.location.href = '/register'}
+                onClick={() => window.location.href = '/Register'}
                 className="inline-flex items-center gap-2 text-indigo-600 font-black text-xs uppercase hover:underline decoration-2 underline-offset-4"
               >
                 <UserPlus size={16} /> Create Admin Account
