@@ -10,12 +10,6 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
-    rollupOptions: {
-      // මෙතැනදී සියලුම warnings පෙන්වීමට සලස්වන්න, එවිට log එකේ error එක දැකගත හැක
-      onwarn(warning, warn) {
-        warn(warning);
-      },
-    },
-  },
+    outDir: 'dist', // Vercel බලාපොරොත්තු වන output folder එක
+  }
 });
