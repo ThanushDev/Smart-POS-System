@@ -190,6 +190,7 @@ const Invoice = () => {
           total={selectedInvoice.total}
           businessName={businessInfo.name}
           businessLogo={businessInfo.logo}
+          businessMobile={businessInfo.mobile}
           date={selectedInvoice.createdAt ? new Date(selectedInvoice.createdAt).toLocaleDateString() : selectedInvoice.date}
           time={selectedInvoice.createdAt ? new Date(selectedInvoice.createdAt).toLocaleTimeString() : selectedInvoice.time}
         />
