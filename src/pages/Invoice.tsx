@@ -39,7 +39,7 @@ const Invoice = () => {
 
   // 2. Invoice එකක් මැකීම (MongoDB Delete)
   const handleDeleteInvoice = async (id: string) => {
-    if (window.confirm("මෙම බිල්පත ස්ථිරවම මකා දැමීමට ඔබට අවශ්‍යද?")) {
+    if (window.confirm("Are you want delete this bill permenently?")) {
       try {
         // Query param එකක් ලෙස ID එක යැවීම
         await axios.delete(`/api/invoices?id=${id}`);
