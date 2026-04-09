@@ -1,50 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-// src/index.tsx ඇතුළත
 import App from './App';
 import './styles.css';
 
-// Send logs to parent frame (like a preview system)
-function postToParent(level: string, ...args: any[]): void {
-  if (window.parent !== window) {
-    window.parent.postMessage(
-      {
-        type: 'iframe-console',
-        level,
-        args,
-      },
-      '*'
-    );
-  }
+// Root element එක ලබාගෙන App එක render කිරීම පමණක් සිදු කරන්න
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  throw new Error('Failed to find the root element');
 }
 
-// Global error handler
-window.onerror = function (message, source, lineno, colno, error) {
-  const errPayload = {
-    message,
-    source,
-    lineno,
-    colno,
-    stack: error?.stack,
-  };
-  postToParent('error', '[Meku_Error_Caught]', errPayload);
-};
-
-// Unhandled promise rejection
-window.onunhandledrejection = function (event) {
-  postToParent('error', '[Meku_Error_Caught]', { reason: event.reason });
-};
-
-// Patch console
-(['log', 'warn', 'info', 'error'] as const).forEach((level) => {
-  const original = console[level];
-  console[level] = (...args: any[]) => {
-    postToParent(level, ...args);
-    original(...args);
-  };
-});
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
