@@ -1,13 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
     import { Link, useNavigate } from 'react-router-dom';
     import { Store, ArrowRight } from 'lucide-react';
+    import { toast } from 'react-toastify';
 
     const Login = () => {
       const navigate = useNavigate();
+      const [username, setUsername] = useState('');
+      const [password, setPassword] = useState('');
 
       const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        navigate('/dashboard');
+        
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        const user = users.find((u: any) => u.username === username && u.password === password);
+
+        if (user) {
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          toast.success(`Welcome back, ${user.name}!`);
+          navigate('/dashboard');
+        } else {
+          toast.error("Invalid credentials. Please try again.");
+        }
       };
 
       return (
@@ -28,6 +41,8 @@ import React from 'react';
                   <input 
                     type="text" 
                     required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                     placeholder="admin@business.com"
                   />
@@ -37,6 +52,8 @@ import React from 'react';
                   <input 
                     type="password" 
                     required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                     placeholder="••••••••"
                   />
