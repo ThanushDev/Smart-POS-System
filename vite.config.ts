@@ -3,11 +3,14 @@ import { defineConfig } from "vite";
 import path from "path";
 
 export default defineConfig({
+  export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+  root: '.', // ව්‍යාපෘතියේ මූලික ෆෝල්ඩරය
+  build: {
+    outDir: 'dist', // build එක යන ෆෝල්ඩරය
+  },
+  // ... අනෙක් settings
+});
   },
   esbuild: {
     logOverride: {
