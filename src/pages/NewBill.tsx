@@ -161,7 +161,7 @@ const NewBill = () => {
         </div>
       </main>
 
-      <PrintableBill ref={printRef} invoiceNumber={`INV-${Date.now().toString().slice(-6)}`} items={cart} total={total} businessName={businessInfo.name} businessLogo={businessInfo.logo} />
+      <PrintableBill ref={printRef} invoiceNumber={`INV-${Date.now().toString().slice(-6)}`} items={cart} total={total} businessName={businessInfo.name} businessLogo={businessInfo.logo} businessMobile="{businessInfo.mobile} />
     </div>
   );
 };
