@@ -20,10 +20,10 @@ const Sidebar = () => {
   };
 
   const menuItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={22} />, role: 'staff' },
-    { name: 'New Bill', path: '/new-bill', icon: <ShoppingCart size={22} />, role: 'staff' },
-    { name: 'Inventory', path: '/inventory', icon: <Package size={22} />, role: 'staff' },
-    { name: 'Invoices', path: '/invoices', icon: <FileText size={22} />, role: 'staff' },
+    { name: 'Dashboard', path: '/Dashboard', icon: <LayoutDashboard size={22} />, role: 'staff' },
+    { name: 'New Bill', path: '/NewBill', icon: <ShoppingCart size={22} />, role: 'staff' },
+    { name: 'Inventory', path: '/Inventory', icon: <Package size={22} />, role: 'staff' },
+    { name: 'Invoices', path: '/Invoices', icon: <FileText size={22} />, role: 'staff' },
     // Admin කෙනෙක් නම් පමණක් පෙනෙන Accounts පිටුව
     { name: 'Accounts', path: '/accounts', icon: <Settings size={22} />, role: 'admin' },
   ];
