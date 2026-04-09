@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "preview": "vite preview"
-}
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "axios": "^1.6.7",
     "socket.io-client": "^4.7.4",
@@ -42,6 +42,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8.43.0"
+    "typescript-eslint": "^8.43.0",
+    "@types/node": "^20.11.0"
   }
 }
