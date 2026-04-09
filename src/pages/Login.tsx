@@ -20,9 +20,9 @@ const Login = () => {
         toast.success(`Welcome back, ${user.name}!`);
 
         if (user.role === 'Admin') {
-          window.location.href = '/dashboard';
+          window.location.href = '/Dashboard';
         } else {
-          window.location.href = '/new-bill';
+          window.location.href = '/NewBill';
         }
       }
     } catch (err: any) {
