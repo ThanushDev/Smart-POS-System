@@ -6,7 +6,9 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000');
+const socket = import { io } from 'socket.io-client';
+
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin);
 
 const NewBill = () => {
   const [products, setProducts] = useState<any[]>([]);
