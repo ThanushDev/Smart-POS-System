@@ -25,7 +25,7 @@ const Sidebar = () => {
     { name: 'New Bill', path: '/NewBill', icon: <ShoppingCart size={22} />, role: 'staff' },
     { name: 'Inventory', path: '/Inventory', icon: <Package size={22} />, role: 'staff' },
     { name: 'Invoices', path: '/Invoices', icon: <FileText size={22} />, role: 'staff' },
-    { name: 'Accounts', path: '/accounts', icon: <Settings size={22} />, role: 'admin' },
+    { name: 'Accounts', path: '/Accounts', icon: <Settings size={22} />, role: 'admin' },
   ];
 
   return (
