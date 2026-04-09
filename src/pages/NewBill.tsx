@@ -6,8 +6,7 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const socket = import { io } from 'socket.io-client';
-
+// Socket connection initialization
 const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin);
 
 const NewBill = () => {
@@ -76,7 +75,7 @@ const NewBill = () => {
       // 2. Stock Update එක පද්ධතිය පුරා Sync කිරීම
       socket.emit('update-data');
 
-      // 3. Low Stock WhatsApp Alert (MongoDB හරහා API එක ක්‍රියාත්මක වේ)
+      // 3. Low Stock WhatsApp Alert
       const lowStockItems = cart.filter(item => (item.qty - item.quantity) <= 5);
       if (lowStockItems.length > 0) {
         await axios.post('/api/alerts/whatsapp', { 
