@@ -9,7 +9,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  build: {
-    outDir: 'dist', // Vercel බලාපොරොත්තු වන output folder එක
-  }
+ // vite.config.ts ඇතුළත
+build: {
+  outDir: 'dist',
+  minify: false, // Error එක සොයාගන්නා තුරු minify අක්‍රිය කරන්න
+  sourcemap: true,
+},
 });
