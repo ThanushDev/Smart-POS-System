@@ -4,10 +4,10 @@ import { Package, AlertTriangle, TrendingUp, DollarSign, ShoppingBag, Calendar, 
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000');
+// Localhost වෙනුවට දැනට පවතින Domain එක ස්වයංක්‍රීයව හඳුනා ගැනීමට සකස් කිරීම
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin);
 
 const Dashboard = () => {
-  // ආරම්භයේදීම බිංදුව අගයන් සහිතව පවත්වා ගැනීම (පිටුව සුදු පාට වීම වැළැක්වීමට)
   const [stats, setStats] = useState({
     todayBills: 0,
     monthBills: 0,
@@ -23,12 +23,14 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
+      setLoading(true);
+      // API එකට කෙලින්ම request එක යැවීම (Vercel/Server environment එකට අනුව)
       const res = await axios.get('/api/dashboard/stats');
       if (res.data) {
         setStats(res.data);
       }
     } catch (err) {
-      console.error("Stats fetching failed, but UI will still work.");
+      console.error("Data fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -36,10 +38,16 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchStats();
+
+    // Socket සම්බන්ධතාවය හරහා දත්ත update කිරීම
     socket.on('update-sync', () => fetchStats());
-    return () => { socket.off('update-sync'); };
+    
+    return () => {
+      socket.off('update-sync');
+    };
   }, []);
 
+  // Card list remains the same...
   const statCards = [
     { title: "Today's Income", value: `Rs. ${(stats.todayIncome || 0).toLocaleString()}`, sub: `${stats.todayBills || 0} Bills Today`, icon: <DollarSign />, color: 'bg-emerald-500' },
     { title: "Monthly Income", value: `Rs. ${(stats.monthIncome || 0).toLocaleString()}`, sub: `${stats.monthBills || 0} Bills this Month`, icon: <Calendar />, color: 'bg-indigo-500' },
@@ -49,16 +57,16 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen bg-slate-50">
-      {/* Sidebar එක සෑම විටම පෙන්වයි */}
       <Sidebar />
-      
       <main className="flex-1 p-8 overflow-y-auto">
         <header className="mb-10">
-          <h1 className="text-3xl font-black italic text-slate-800 uppercase tracking-tighter">DIGI SOLUTIONS DASHBOARD</h1>
+          <h1 className="text-3xl font-black italic text-slate-800 uppercase tracking-tighter italic">
+             DIGI SOLUTIONS <span className="text-indigo-600">DASHBOARD</span>
+          </h1>
           <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Business Performance Intelligence</p>
         </header>
 
-        {/* Stats Cards Grid - දත්ත නැති වුණත් interface එක පෙන්වයි */}
+        {/* Stats Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {statCards.map((card, i) => (
             <div key={i} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-xl transition-all">
@@ -80,19 +88,17 @@ const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Low Stock Detailed List */}
           <div className="lg:col-span-2 bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 min-h-[400px]">
             <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-4">
               <h2 className="text-xl font-black italic text-slate-800 uppercase">Inventory Shortage</h2>
               <span className="bg-rose-100 text-rose-600 px-4 py-1 rounded-full text-[10px] font-black">URGENT ACTION</span>
             </div>
-            
             <div className="space-y-4">
               {stats.lowStockItems && stats.lowStockItems.length > 0 ? (
                 stats.lowStockItems.map((item: any) => (
                   <div key={item._id} className="flex justify-between items-center p-5 bg-slate-50 rounded-[2rem] border border-transparent hover:border-indigo-100 hover:bg-white transition-all">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 font-black">
+                      <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 font-black italic">
                         {item.name ? item.name.charAt(0) : "P"}
                       </div>
                       <div>
@@ -111,38 +117,30 @@ const Dashboard = () => {
               ) : (
                 <div className="text-center py-20">
                   <ShoppingBag size={48} className="mx-auto text-slate-200 mb-4" />
-                  <p className="text-slate-400 font-bold italic">
-                    {loading ? "Loading Inventory..." : "Stock levels are perfect. No items low on stock!"}
+                  <p className="text-slate-400 font-bold italic uppercase text-xs tracking-widest">
+                    {loading ? "Syncing Database..." : "All stock levels are perfect!"}
                   </p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Quick Actions / Shortcuts - මේවා දත්ත නැතත් වැඩ කළ යුතුය */}
           <div className="bg-indigo-600 rounded-[3rem] p-8 text-white shadow-xl shadow-indigo-200 flex flex-col justify-between">
             <div>
-              <h2 className="text-xl font-black mb-8 italic">QUICK ACTIONS</h2>
+              <h2 className="text-xl font-black mb-8 italic uppercase tracking-tighter">QUICK ACTIONS</h2>
               <div className="space-y-4">
-                <button 
-                  onClick={() => window.location.href = '/reports'}
-                  className="w-full bg-white/10 hover:bg-white/20 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all border border-white/10"
-                >
-                  <TrendingUp size={18} /> View Sales Report
+                <button onClick={() => window.location.href = '/reports'} className="w-full bg-white/10 hover:bg-white/20 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all border border-white/10 uppercase text-xs tracking-widest">
+                  <TrendingUp size={18} /> Sales Report
                 </button>
-                <button 
-                  onClick={() => window.location.href = '/new-bill'}
-                  className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-indigo-800/20"
-                >
-                  <ShoppingCart size={18} /> Create New Bill
+                <button onClick={() => window.location.href = '/new-bill'} className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-indigo-800/20 uppercase text-xs tracking-widest">
+                  <ShoppingCart size={18} /> New Bill
                 </button>
               </div>
             </div>
-            
             <div className="mt-12 bg-white/10 p-6 rounded-[2rem] border border-white/10">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">System Message</p>
-              <p className="mt-2 text-sm font-medium">
-                {loading ? "Syncing with Database..." : "Your Digi Solutions POS System is Working."}
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-60 italic">System Status</p>
+              <p className="mt-2 text-sm font-bold uppercase tracking-tighter italic">
+                {loading ? "Connecting to Cloud..." : "Digi Solutions Online"}
               </p>
             </div>
           </div>
