@@ -5,7 +5,6 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Import path වල අකුරු GitHub එකේ ඇති File names වලට ගැලපෙන සේ සකසා ඇත
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Dashboard from '@/pages/Dashboard';
@@ -30,8 +29,9 @@ const App: React.FC = () => {
             <Route path="/Inventory" element={<Inventory />} />
             <Route path="/Invoices" element={<Invoice />} />
             
-            <Route path="/report" element={<Report />} />
-            <Route path="/accounts" element={<Accounts />} />
+            {/* මෙහි අකුරු Capital ලෙස නිවැරදි කර ඇත */}
+            <Route path="/Report" element={<Report />} />
+            <Route path="/Accounts" element={<Accounts />} />
             
             <Route path="/404" element={<NotFound />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
