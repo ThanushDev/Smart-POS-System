@@ -4,11 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
+  "dev": "vite",
+  "build": "vite build", // "tsc && vite build" වෙනුවට මෙය පමණක් භාවිතා කරන්න
+  "preview": "vite preview"
+}
   "dependencies": {
     "axios": "^1.6.7",
     "socket.io-client": "^4.7.4",
