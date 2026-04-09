@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
-import { Eye, Printer, Search, X, Trash2 } from 'lucide-react';
+import { Eye, Printer, Search, X, Trash2, FileText } from 'lucide-react';
 import PrintableBill from '../components/PrintableBill';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -10,37 +10,40 @@ const Invoice = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
-  const [businessInfo, setBusinessInfo] = useState<any>({ name: 'Smart POS', logo: '' });
+  const [businessInfo, setBusinessInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const printRef = useRef<HTMLDivElement>(null);
 
-  // 1. MongoDB එකෙන් Invoices ලබා ගැනීම
-  const fetchInvoices = async () => {
+  // 1. MongoDB එකෙන් Invoices සහ Business Info ලබා ගැනීම
+  const fetchData = async () => {
     try {
       setIsLoading(true);
-      const res = await axios.get('/api/invoices');
-      setInvoices(res.data);
+      // එකවර API දෙකම Call කිරීම
+      const [invRes, bizRes] = await Promise.all([
+        axios.get('/api/invoices'),
+        axios.get('/api/business')
+      ]);
+      
+      setInvoices(invRes.data);
+      setBusinessInfo(bizRes.data);
     } catch (err) {
-      toast.error("Failed to load invoices from database");
+      toast.error("Failed to load data from server");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchInvoices();
-    
-    // Business Info තවමත් localStorage එකේ ඇත්නම් එය ලබා ගැනීම
-    const savedInfo = localStorage.getItem('businessInfo');
-    if (savedInfo) setBusinessInfo(JSON.parse(savedInfo));
+    fetchData();
   }, []);
 
   // 2. Invoice එකක් මැකීම (MongoDB Delete)
   const handleDeleteInvoice = async (id: string) => {
-    if (window.confirm("Are you sure? This will permanently delete this invoice from the database.")) {
+    if (window.confirm("මෙම බිල්පත ස්ථිරවම මකා දැමීමට ඔබට අවශ්‍යද?")) {
       try {
+        // Query param එකක් ලෙස ID එක යැවීම
         await axios.delete(`/api/invoices?id=${id}`);
-        setInvoices(invoices.filter(inv => inv._id !== id)); // පෝලිමෙන් ඉවත් කිරීම
+        setInvoices(invoices.filter(inv => inv._id !== id));
         toast.success("Invoice deleted successfully");
       } catch (err) {
         toast.error("Error deleting invoice");
@@ -48,132 +51,138 @@ const Invoice = () => {
     }
   };
 
+  // 3. Search කිරීමේ පහසුකම
   const filteredInvoices = invoices.filter(inv => 
-    inv.invoiceId?.toLowerCase().includes(search.toLowerCase()) ||
-    inv.id?.toLowerCase().includes(search.toLowerCase())
+    (inv.invoiceId || inv.id || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const handleReprint = (inv: any) => {
     setSelectedInvoice(inv);
     setTimeout(() => {
       window.print();
-    }, 100);
+    }, 500);
   };
 
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <main className="flex-1 p-8">
-        <h1 className="text-3xl font-serif font-bold text-slate-900 mb-8">Invoice History</h1>
+        <header className="mb-8">
+          <h1 className="text-3xl font-black italic text-slate-800 uppercase tracking-tighter flex items-center gap-3">
+            <FileText className="text-indigo-600" /> Invoice History
+          </h1>
+          <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Manage and reprint your sales records</p>
+        </header>
         
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100">
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
             <div className="relative max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
                 type="text"
-                placeholder="Search invoice number..."
+                placeholder="Search by Invoice ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-12 pr-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                className="w-full pl-12 pr-4 py-3 rounded-2xl border-none bg-white shadow-inner outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-sm"
               />
             </div>
           </div>
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Invoice #</th>
-                <th className="px-6 py-4 font-semibold">Date</th>
-                <th className="px-6 py-4 font-semibold">Total Amount</th>
-                <th className="px-6 py-4 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
-                <tr><td colSpan={4} className="px-6 py-10 text-center text-slate-400">Loading Invoices...</td></tr>
-              ) : filteredInvoices.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-10 text-center text-slate-400">No invoices found.</td></tr>
-              ) : filteredInvoices.map((inv) => (
-                <tr key={inv._id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-mono font-medium text-slate-900">{inv.invoiceId || inv.id}</td>
-                  <td className="px-6 py-4 text-slate-600">
-                    {inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : inv.date}
-                  </td>
-                  <td className="px-6 py-4 font-bold text-slate-900">
-                    Rs. {inv.total.toLocaleString('en-LK', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => setSelectedInvoice(inv)}
-                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" 
-                        title="View"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button 
-                        onClick={() => handleReprint(inv)}
-                        className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" 
-                        title="Reprint"
-                      >
-                        <Printer size={18} />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteInvoice(inv._id)}
-                        className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" 
-                        title="Delete"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                <tr>
+                  <th className="px-8 py-4">Invoice ID</th>
+                  <th className="px-8 py-4">Date & Time</th>
+                  <th className="px-8 py-4">Cashier</th>
+                  <th className="px-8 py-4">Total Amount</th>
+                  <th className="px-8 py-4 text-center">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {isLoading ? (
+                  <tr><td colSpan={5} className="px-8 py-20 text-center font-bold text-slate-400 italic">Loading Database Records...</td></tr>
+                ) : filteredInvoices.length === 0 ? (
+                  <tr><td colSpan={5} className="px-8 py-20 text-center font-bold text-slate-400 italic">No matching invoices found.</td></tr>
+                ) : filteredInvoices.map((inv) => (
+                  <tr key={inv._id} className="hover:bg-indigo-50/30 transition-colors group">
+                    <td className="px-8 py-5 font-black text-indigo-600 text-sm">{inv.invoiceId}</td>
+                    <td className="px-8 py-5 text-slate-600 font-bold text-xs uppercase">
+                      {inv.createdAt ? new Date(inv.createdAt).toLocaleString() : 'N/A'}
+                    </td>
+                    <td className="px-8 py-5 text-slate-500 font-bold text-xs uppercase">{inv.cashier || 'System'}</td>
+                    <td className="px-8 py-5 font-black text-slate-800">
+                      Rs. {inv.total.toLocaleString()}
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex justify-center gap-3">
+                        <button onClick={() => setSelectedInvoice(inv)} className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                          <Eye size={16} />
+                        </button>
+                        <button onClick={() => handleReprint(inv)} className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                          <Printer size={16} />
+                        </button>
+                        <button onClick={() => handleDeleteInvoice(inv._id)} className="p-2.5 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        {/* Invoice Preview Modal */}
         <AnimatePresence>
           {selectedInvoice && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden border-t-8 border-indigo-600"
               >
-                <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                  <h2 className="font-bold text-slate-900">Invoice Details</h2>
-                  <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-slate-600">
-                    <X size={20} />
+                <div className="p-6 border-b border-slate-50 flex justify-between items-center">
+                  <span className="bg-indigo-100 text-indigo-600 px-4 py-1 rounded-full text-[10px] font-black uppercase">Invoice Preview</span>
+                  <button onClick={() => setSelectedInvoice(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <X size={20} className="text-slate-400" />
                   </button>
                 </div>
-                <div className="p-6 max-h-[70vh] overflow-y-auto">
-                  <div className="text-center mb-6">
-                    {businessInfo.logo && <img src={businessInfo.logo} alt="Logo" className="w-16 h-16 mx-auto mb-2 object-contain" />}
-                    <h3 className="text-xl font-bold uppercase">{businessInfo.name}</h3>
-                    <p className="text-sm text-slate-500">Invoice #{selectedInvoice.invoiceId || selectedInvoice.id}</p>
+
+                <div className="p-8 max-h-[60vh] overflow-y-auto">
+                  <div className="text-center mb-8">
+                    <h3 className="text-2xl font-black italic uppercase text-slate-800 tracking-tighter">
+                      {businessInfo?.name || 'Digi Solutions'}
+                    </h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: #{selectedInvoice.invoiceId}</p>
                   </div>
-                  <div className="space-y-3 mb-6">
+
+                  <div className="space-y-4 mb-8">
                     {selectedInvoice.items.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between text-sm">
-                        <span>{item.name} x {item.quantity}</span>
-                        <span className="font-medium">Rs. {(item.price * item.quantity).toLocaleString()}</span>
+                      <div key={idx} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
+                        <div>
+                          <p className="font-black text-slate-700 uppercase text-xs">{item.name}</p>
+                          <p className="text-[10px] font-bold text-indigo-500">{item.quantity} Unit(s) x Rs.{item.price}</p>
+                        </div>
+                        <span className="font-black text-slate-800 text-sm">Rs. {(item.price * item.quantity).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="border-t border-slate-100 pt-4 flex justify-between font-bold text-lg">
-                    <span>Total</span>
-                    <span>Rs. {selectedInvoice.total.toLocaleString()}</span>
+
+                  <div className="bg-indigo-50 p-6 rounded-[2rem] flex justify-between items-center">
+                    <span className="font-black text-indigo-600 uppercase text-sm italic">Grand Total</span>
+                    <span className="font-black text-indigo-600 text-2xl italic">Rs. {selectedInvoice.total.toLocaleString()}</span>
                   </div>
                 </div>
-                <div className="p-4 bg-slate-50 border-t border-slate-100">
+
+                <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
                   <button 
                     onClick={() => handleReprint(selectedInvoice)}
-                    className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700"
+                    className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-indigo-700 shadow-lg shadow-indigo-200 uppercase text-xs"
                   >
-                    <Printer size={18} />
-                    Print Invoice
+                    <Printer size={18} /> Reprint Receipt
                   </button>
                 </div>
               </motion.div>
@@ -182,19 +191,22 @@ const Invoice = () => {
         </AnimatePresence>
       </main>
 
-      {selectedInvoice && (
-        <PrintableBill 
-          ref={printRef}
-          invoiceNumber={selectedInvoice.invoiceId || selectedInvoice.id}
-          items={selectedInvoice.items}
-          total={selectedInvoice.total}
-          businessName={businessInfo.name}
-          businessLogo={businessInfo.logo}
-          businessMobile={businessInfo.mobile}
-          date={selectedInvoice.createdAt ? new Date(selectedInvoice.createdAt).toLocaleDateString() : selectedInvoice.date}
-          time={selectedInvoice.createdAt ? new Date(selectedInvoice.createdAt).toLocaleTimeString() : selectedInvoice.time}
-        />
-      )}
+      {/* Hidden Printable Component */}
+      <div className="hidden">
+        {selectedInvoice && (
+          <PrintableBill 
+            ref={printRef}
+            invoiceId={selectedInvoice.invoiceId}
+            cart={selectedInvoice.items}
+            total={selectedInvoice.total}
+            paymentMethod={selectedInvoice.paymentMethod || 'Cash'}
+            businessInfo={businessInfo}
+            currentUser={{ name: selectedInvoice.cashier }}
+            date={new Date(selectedInvoice.createdAt).toLocaleDateString()}
+            time={new Date(selectedInvoice.createdAt).toLocaleTimeString()}
+          />
+        )}
+      </div>
     </div>
   );
 };
