@@ -1,91 +1,70 @@
 import React from 'react';
-    import { format } from 'date-fns';
 
-    interface BillItem {
-      id: string;
-      name: string;
-      price: number;
-      quantity: number;
-    }
+interface PrintableBillProps {
+  invoiceNumber: string;
+  items: any[];
+  total: number;
+  businessName: string;
+  businessLogo?: string;
+  businessMobile?: string; // අලුතින් එකතු කරන ලදී
+  date?: string;
+  time?: string;
+}
 
-    interface PrintableBillProps {
-      invoiceNumber: string;
-      items: BillItem[];
-      total: number;
-      businessName: string;
-      businessLogo?: string;
-      date?: string;
-      time?: string;
-    }
+const PrintableBill = React.forwardRef<HTMLDivElement, PrintableBillProps>((props, ref) => {
+  const { invoiceNumber, items, total, businessName, businessLogo, businessMobile, date, time } = props;
 
-    const PrintableBill = React.forwardRef<HTMLDivElement, PrintableBillProps>(({ 
-      invoiceNumber, 
-      items, 
-      total, 
-      businessName,
-      businessLogo,
-      date,
-      time
-    }, ref) => {
-      return (
-        <div ref={ref} className="p-8 bg-white text-slate-900 max-w-[400px] mx-auto print:block hidden">
-          <div className="text-center mb-6">
-            <div className="flex flex-col items-center gap-2 mb-2">
-              {businessLogo && (
-                <img src={businessLogo} alt="Logo" className="w-16 h-16 object-contain" />
-              )}
-              <h1 className="text-2xl font-bold uppercase">{businessName}</h1>
-            </div>
-            <p className="text-sm text-slate-600">Invoice</p>
-          </div>
+  return (
+    <div ref={ref} className="print:block hidden p-8 bg-white text-black w-[80mm] mx-auto text-sm font-sans">
+      <style>{`
+        @media print {
+          @page { size: 80mm auto; margin: 0; }
+          body { padding: 5mm; }
+        }
+      `}</style>
 
-          <div className="border-y border-slate-200 py-3 mb-4 text-sm">
-            <div className="flex justify-between">
-              <span>Invoice #:</span>
-              <span className="font-mono">{invoiceNumber}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Date:</span>
-              <span>{date || format(new Date(), 'dd/MM/yyyy')}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Time:</span>
-              <span>{time || format(new Date(), 'HH:mm:ss')}</span>
-            </div>
-          </div>
+      {/* Header */}
+      <div className="text-center border-b pb-4 mb-4">
+        {businessLogo && <img src={businessLogo} alt="Logo" className="w-16 h-16 mx-auto mb-2 object-contain" />}
+        <h2 className="text-xl font-bold uppercase">{businessName}</h2>
+        {/* දුරකථන අංකය පෙන්වන පේළිය */}
+        {businessMobile && <p className="text-xs font-bold">Tel: {businessMobile}</p>}
+        <p className="text-xs mt-1">Invoice: #{invoiceNumber}</p>
+        <p className="text-[10px]">{date} | {time}</p>
+      </div>
 
-          <table className="w-full text-sm mb-6">
-            <thead>
-              <tr className="border-b border-slate-200 text-left">
-                <th className="py-2">Item</th>
-                <th className="py-2 text-center">Qty</th>
-                <th className="py-2 text-right">Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="border-b border-slate-50">
-                  <td className="py-2">{item.name}</td>
-                  <td className="py-2 text-center">{item.quantity}</td>
-                  <td className="py-2 text-right">Rs. {(item.price * item.quantity).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Items Table */}
+      <table className="w-full mb-4 border-b">
+        <thead>
+          <tr className="text-left border-b border-gray-200">
+            <th className="py-1">Item</th>
+            <th className="py-1 text-center">Qty</th>
+            <th className="py-1 text-right">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={index} className="text-[12px]">
+              <td className="py-1 truncate max-w-[40mm]">{item.name}</td>
+              <td className="py-1 text-center">{item.quantity}</td>
+              <td className="py-1 text-right">{(item.price * item.quantity).toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-          <div className="flex justify-between items-center font-bold text-lg border-t-2 border-slate-900 pt-4">
-            <span>TOTAL AMOUNT</span>
-            <span>Rs. {total.toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
-          </div>
+      {/* Total */}
+      <div className="flex justify-between font-bold text-lg mb-4">
+        <span>Total:</span>
+        <span>Rs. {total.toLocaleString()}</span>
+      </div>
 
-          <div className="text-center mt-10 pt-6 border-t border-dashed border-slate-300">
-            <p className="font-medium mb-1">Thank You!</p>
-            <p className="text-xs text-slate-500 italic">Please Come Again.</p>
-          </div>
-        </div>
-      );
-    });
+      <div className="text-center text-[10px] mt-8 italic border-t pt-2">
+        Thank you for your business!
+      </div>
+    </div>
+  );
+});
 
-    PrintableBill.displayName = 'PrintableBill';
-
-    export default PrintableBill;
+PrintableBill.displayName = 'PrintableBill';
+export default PrintableBill;
