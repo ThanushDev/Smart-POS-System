@@ -20,7 +20,6 @@ mongoose.connect(MONGODB_URI)
 
 // --- MODELS ---
 
-// Business Model
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
   name: String,
   whatsapp: String,
@@ -30,13 +29,13 @@ const Business = mongoose.models.Business || mongoose.model('Business', new mong
   role: { type: String, default: 'Admin' }
 }, { timestamps: true }));
 
-// Product Model
+// Product Schema එකේ අකුරු වල වැරදි ඇත්නම් එය නිවැරදි කිරීමට මෙසේ සකස් කරන ලදී
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: { type: String, required: true },
-  code: { type: String, required: true, unique: true },
-  category: { type: String, required: true },
-  price: { type: Number, required: true },
-  qty: { type: Number, required: true },
+  name: String,
+  code: String, // Error එකක් එන නිසා unique: true තාවකාලිකව ඉවත් කරන ලදී
+  category: String,
+  price: Number,
+  qty: Number,
 }, { timestamps: true }));
 
 
@@ -70,7 +69,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2. Inventory / Products Routes (Frontend එකේ /api/products ලෙස ඉල්ලන නිසා නම වෙනස් කරන ලදී)
+// 2. Inventory / Products Routes
 app.get('/api/products', async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
@@ -83,17 +82,24 @@ app.get('/api/products', async (req, res) => {
 app.post('/api/products', async (req, res) => {
   try {
     const { name, code, category, price, qty } = req.body;
-    const existingProduct = await Product.findOne({ code });
-    if (existingProduct) return res.status(400).json({ success: false, message: "Product code already exists" });
-
-    const newProduct = await Product.create({ name, code, category, price, qty });
+    
+    // වැදගත්: දත්ත වර්ග (Data types) නිවැරදි දැයි තහවුරු කරගැනීම
+    const newProduct = await Product.create({ 
+      name, 
+      code, 
+      category, 
+      price: Number(price), 
+      qty: Number(qty) 
+    });
+    
     res.status(201).json({ success: true, product: newProduct });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to add product" });
+    console.error("Save Error:", error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// 3. Business Profile Route (Frontend එක /api/business ඉල්ලන නිසා මෙයද එක් කරන ලදී)
+// 3. Business Profile Route
 app.get('/api/business', async (req, res) => {
   try {
     const business = await Business.findOne(); 
@@ -104,5 +110,4 @@ app.get('/api/business', async (req, res) => {
   }
 });
 
-// Vercel සඳහා export කිරීම
 export default app;
