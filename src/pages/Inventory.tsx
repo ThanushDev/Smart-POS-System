@@ -33,6 +33,47 @@ const Inventory = () => {
     fetchProducts();
   }, []);
 
+  // 2. Print Functionality
+  const handlePrint = () => {
+    if (barcodeRef.current) {
+      const printContent = barcodeRef.current.innerHTML;
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Print Barcode</title>
+              <script src="https://cdn.tailwindcss.com"></script>
+              <style>
+                @media print {
+                  @page { size: 50mm 30mm; margin: 0; }
+                  body { margin: 0; padding: 0; }
+                }
+              </style>
+            </head>
+            <body onload="window.print(); window.close();">
+              <div class="flex justify-center items-center h-screen">
+                ${printContent}
+              </div>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
+    }
+  };
+
+  // Barcode එකක් තෝරාගත් විට ස්වයංක්‍රීයව පින්ට් කිරීම
+  useEffect(() => {
+    if (selectedForBarcode) {
+      const timer = setTimeout(() => {
+        handlePrint();
+        setSelectedForBarcode(null);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedForBarcode]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -42,7 +83,7 @@ const Inventory = () => {
     }
   };
 
-  // 2. Save or Update Product in MongoDB
+  // 3. Save or Update Product
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
@@ -66,13 +107,13 @@ const Inventory = () => {
       setIsModalOpen(false);
       setEditingProduct(null);
       setProductImage('');
-      fetchProducts(); // Refresh List
+      fetchProducts();
     } catch (err) {
       toast.error("Error saving product");
     }
   };
 
-  // 3. Delete Product from MongoDB
+  // 4. Delete Product
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
@@ -107,7 +148,6 @@ const Inventory = () => {
           </button>
         </header>
 
-        {/* Search & Stats Area */}
         <div className="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-8 flex items-center gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -120,7 +160,6 @@ const Inventory = () => {
           </div>
         </div>
 
-        {/* Product Grid */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64 text-slate-400 uppercase font-black text-xs gap-4">
             <Loader2 className="animate-spin" size={40} /> Loading Cloud Data...
@@ -138,9 +177,6 @@ const Inventory = () => {
                     <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-200"><ImageIcon size={48} /></div>
-                  )}
-                  {product.qty <= 5 && (
-                    <div className="absolute top-4 left-4 bg-rose-500 text-white text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-tighter shadow-lg animate-pulse">Low Stock</div>
                   )}
                 </div>
                 <h3 className="font-black text-slate-800 uppercase italic tracking-tighter truncate">{product.name}</h3>
@@ -167,14 +203,12 @@ const Inventory = () => {
           </div>
         )}
 
-        {/* Modal for Add/Edit */}
         <AnimatePresence>
           {isModalOpen && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
               <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[3rem] w-full max-w-lg p-10 relative shadow-2xl">
                 <button onClick={() => setIsModalOpen(false)} className="absolute top-8 right-8 text-slate-300 hover:text-slate-600"><X size={24} /></button>
                 <h2 className="text-2xl font-black italic uppercase tracking-tighter text-slate-800 mb-2">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
-                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-8">Fill in the product details below</p>
                 
                 <form onSubmit={handleSaveProduct} className="space-y-4">
                   <div className="flex justify-center mb-6">
@@ -190,13 +224,13 @@ const Inventory = () => {
                       <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
                     </label>
                   </div>
-                  <input name="name" placeholder="Product Name" defaultValue={editingProduct?.name} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500/10" />
-                  <input name="code" placeholder="Barcode / Product Code" defaultValue={editingProduct?.code} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500/10" />
+                  <input name="name" placeholder="Product Name" defaultValue={editingProduct?.name} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
+                  <input name="code" placeholder="Barcode Code" defaultValue={editingProduct?.code} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
                   <div className="grid grid-cols-2 gap-4">
-                    <input name="qty" type="number" placeholder="Quantity" defaultValue={editingProduct?.qty} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500/10" />
-                    <input name="price" type="number" placeholder="Price" defaultValue={editingProduct?.price} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500/10" />
+                    <input name="qty" type="number" placeholder="Quantity" defaultValue={editingProduct?.qty} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
+                    <input name="price" type="number" placeholder="Price" defaultValue={editingProduct?.price} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
                   </div>
-                  <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all">Save to Inventory</button>
+                  <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl">Save to Inventory</button>
                 </form>
               </motion.div>
             </div>
@@ -204,8 +238,16 @@ const Inventory = () => {
         </AnimatePresence>
       </main>
 
-      {/* Barcode Print Component */}
-      {selectedForBarcode && <PrintableBarcode ref={barcodeRef} product={selectedForBarcode} />}
+      {/* Hidden Barcode Component for Printing */}
+      <div className="hidden">
+        {selectedForBarcode && (
+          <PrintableBarcode 
+            ref={barcodeRef} 
+            product={selectedForBarcode} 
+            businessName="Digi Solutions" 
+          />
+        )}
+      </div>
     </div>
   );
 };
