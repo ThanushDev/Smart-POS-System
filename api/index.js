@@ -11,13 +11,8 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// MongoDB Connection Logic for Serverless (Vercel)
+// MongoDB Connection Logic
 const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  console.error("MONGODB_URI is not defined in Environment Variables");
-}
-
 let isConnected = false;
 
 const connectDB = async () => {
@@ -56,11 +51,11 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
   cashier: String
 }, { timestamps: true }));
 
-
-// --- API ROUTES ---
+// --- ROUTER SETUP ---
+const router = express.Router();
 
 // 1. Auth Routes
-app.post('/api/auth/register', async (req, res) => {
+router.post('/auth/register', async (req, res) => {
   await connectDB();
   try {
     const { businessName, whatsapp, email, password, logo } = req.body;
@@ -74,10 +69,10 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+router.post('/auth/login', async (req, res) => {
   await connectDB();
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body; // username ලෙස එන්නේ email එකයි
     const user = await Business.findOne({ email: username, password: password });
     if (user) {
       res.json({ success: true, user: { name: user.name, role: user.role, email: user.email } });
@@ -89,93 +84,74 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2. Inventory / Products Routes
-app.get('/api/products', async (req, res) => {
+// 2. Inventory Routes
+router.get('/products', async (req, res) => {
   await connectDB();
   try {
     const products = await Product.find().sort({ createdAt: -1 });
     res.json(products);
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Error loading products" });
-  }
+  } catch (error) { res.status(500).json({ success: false }); }
 });
 
-app.post('/api/products', async (req, res) => {
+router.post('/products', async (req, res) => {
   await connectDB();
   try {
-    const { name, code, price, qty } = req.body;
-    const newProduct = await Product.create({ 
-      name, 
-      code, 
-      price: Number(price), 
-      qty: Number(qty) 
-    });
+    const newProduct = await Product.create(req.body);
     res.status(201).json({ success: true, product: newProduct });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-app.put('/api/products', async (req, res) => {
-  await connectDB();
-  try {
-    const { id } = req.query;
-    const updatedProduct = await Product.findByIdAndUpdate(id, req.body, { new: true });
-    res.json(updatedProduct);
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-app.delete('/api/products', async (req, res) => {
-  await connectDB();
-  try {
-    const { id } = req.body;
-    await Product.findByIdAndDelete(id);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  } catch (error) { res.status(500).json({ success: false }); }
 });
 
 // 3. Invoice Routes
-app.get('/api/invoices', async (req, res) => {
-  await connectDB();
-  try {
-    const invoices = await Invoice.find().sort({ createdAt: -1 });
-    res.json(invoices);
-  } catch (error) {
-    res.status(500).json({ success: false });
-  }
-});
-
-app.post('/api/invoices', async (req, res) => {
+router.post('/invoices', async (req, res) => {
   await connectDB();
   try {
     const newInvoice = await Invoice.create(req.body);
-    // Stock Update Logic
     for (const item of req.body.items) {
-        await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
+      await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
     }
     res.status(201).json(newInvoice);
-  } catch (error) {
-    res.status(500).json({ success: false });
-  }
+  } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// 4. Business Profile Route
-app.get('/api/business', async (req, res) => {
+// 4. Dashboard Stats Route (අත්‍යවශ්‍යයි)
+router.get('/dashboard/stats', async (req, res) => {
   await connectDB();
   try {
-    const business = await Business.findOne(); 
-    if (!business) return res.status(404).json({ message: "No business data" });
-    res.json(business);
-  } catch (error) {
-    res.status(500).json({ success: false });
-  }
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [invoices, products] = await Promise.all([
+      Invoice.find({ createdAt: { $gte: startOfMonth } }),
+      Product.find()
+    ]);
+
+    const todayInvoices = invoices.filter(inv => new Date(inv.createdAt) >= startOfToday);
+
+    res.json({
+      todayIncome: todayInvoices.reduce((sum, inv) => sum + inv.total, 0),
+      todayCash: todayInvoices.filter(inv => inv.paymentMethod === 'Cash').reduce((sum, inv) => sum + inv.total, 0),
+      todayCard: todayInvoices.filter(inv => inv.paymentMethod === 'Card').reduce((sum, inv) => sum + inv.total, 0),
+      monthIncome: invoices.reduce((sum, inv) => sum + inv.total, 0),
+      todayBills: todayInvoices.length,
+      lowStockCount: products.filter(p => p.qty <= 5).length,
+      lowStockItems: products.filter(p => p.qty <= 5),
+      totalProducts: products.length,
+      totalStockValue: products.reduce((sum, p) => sum + (p.price * p.qty), 0)
+    });
+  } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Default Route for checking server status
+router.get('/business', async (req, res) => {
+  await connectDB();
+  const business = await Business.findOne();
+  res.json(business);
+});
+
+// සියලුම Router දත්ත '/api' යටතට පත් කිරීම
+app.use('/api', router);
+
+// Default API status
 app.get('/api', (req, res) => {
   res.send("Digi Solutions API is running...");
 });
