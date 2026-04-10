@@ -40,10 +40,6 @@ const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, busin
 
         {/* Footer: Code & Price */}
         <div className="w-full flex justify-between items-end px-1 pt-0.5 border-t border-dashed border-slate-400">
-          <div className="flex flex-col items-start leading-none">
-            <span className="text-[7px] font-bold text-slate-500 uppercase tracking-tighter">Category</span>
-            <span className="text-[8px] font-black italic truncate max-w-[25mm]">{product.category || 'General'}</span>
-          </div>
           <div className="text-right leading-none">
             <span className="text-[13px] font-black italic tracking-tighter">
               Rs.{Number(product.price).toLocaleString()}
