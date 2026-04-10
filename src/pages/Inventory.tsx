@@ -10,7 +10,6 @@ const Inventory = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [search, setSearch] = useState('');
-  const [productImage, setProductImage] = useState<string>('');
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedForBarcode, setSelectedForBarcode] = useState<any>(null);
@@ -32,18 +31,13 @@ const Inventory = () => {
     fetchProducts();
   }, []);
 
-  // --- අලුත් Tab එකක් විවෘත නොවී පින්ට් කිරීමේ ක්‍රමය ---
   const handlePrint = () => {
     if (barcodeRef.current) {
       const printContent = barcodeRef.current.innerHTML;
-      
-      // Iframe එකක් සාදා එය හරහා පින්ට් කිරීම (අලුත් Tab එකක් විවෘත නොවේ)
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
+      iframe.style.right = '0'; iframe.style.bottom = '0';
+      iframe.style.width = '0'; iframe.style.height = '0';
       iframe.style.border = '0';
       document.body.appendChild(iframe);
 
@@ -55,22 +49,12 @@ const Inventory = () => {
               <title>Print Barcode</title>
               <script src="https://cdn.tailwindcss.com"></script>
               <style>
-                @media print {
-                  @page { size: 50mm 30mm; margin: 0; }
-                  body { margin: 0; padding: 0; }
-                }
+                @media print { @page { size: 50mm 30mm; margin: 0; } body { margin: 0; padding: 0; } }
               </style>
             </head>
             <body>
-              <div class="flex justify-center items-center h-screen">
-                ${printContent}
-              </div>
-              <script>
-                window.onload = function() {
-                  window.print();
-                  setTimeout(() => { window.frameElement.remove(); }, 100);
-                };
-              </script>
+              <div class="flex justify-center items-center h-screen">${printContent}</div>
+              <script>window.onload = function() { window.print(); setTimeout(() => { window.frameElement.remove(); }, 100); };</script>
             </body>
           </html>
         `);
@@ -81,10 +65,7 @@ const Inventory = () => {
 
   useEffect(() => {
     if (selectedForBarcode) {
-      const timer = setTimeout(() => {
-        handlePrint();
-        setSelectedForBarcode(null);
-      }, 500);
+      const timer = setTimeout(() => { handlePrint(); setSelectedForBarcode(null); }, 500);
       return () => clearTimeout(timer);
     }
   }, [selectedForBarcode]);
@@ -92,43 +73,43 @@ const Inventory = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-    
     const productData = {
       name: formData.get('name'),
       code: formData.get('code'),
-      category: formData.get('category'), // Category එක එකතු කළා
       price: Number(formData.get('price')),
       qty: Number(formData.get('qty')),
-      image: productImage || editingProduct?.image
     };
 
     try {
       if (editingProduct) {
         await axios.put(`/api/products?id=${editingProduct._id}`, productData);
-        toast.success("Product Updated!");
+        toast.success("Updated!");
       } else {
         await axios.post('/api/products', productData);
-        toast.success("Product Added!");
+        toast.success("Added!");
       }
       setIsModalOpen(false);
       setEditingProduct(null);
       fetchProducts();
     } catch (err) {
-      toast.error("Error saving product");
+      toast.error("Save Error");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Delete this product?")) {
+    if (window.confirm("Delete product?")) {
       try {
         await axios.delete('/api/products', { data: { id } });
-        toast.success("Product Removed");
         fetchProducts();
-      } catch (err) {
-        toast.error("Delete failed");
-      }
+      } catch (err) { toast.error("Error"); }
     }
   };
+
+  // Search Bar logic
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(search.toLowerCase()) || 
+    p.code.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="flex bg-slate-50 min-h-screen">
@@ -136,26 +117,29 @@ const Inventory = () => {
       <main className="flex-1 p-8">
         <header className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-black italic uppercase tracking-tighter">Inventory</h1>
-          <button 
-            onClick={() => { setEditingProduct(null); setIsModalOpen(true); }}
-            className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs active:scale-95 transition-all"
-          >
-            + Add Product
-          </button>
+          <button onClick={() => { setEditingProduct(null); setIsModalOpen(true); }} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs">+ Add Product</button>
         </header>
 
-        {/* Product Grid */}
+        {/* Search Bar */}
+        <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm mb-8 flex items-center gap-4">
+          <Search className="text-slate-400 ml-2" size={20} />
+          <input 
+            type="text" 
+            placeholder="Search products by name or code..." 
+            className="flex-1 bg-transparent outline-none font-bold text-slate-600 italic"
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map((product) => (
-            <div key={product._id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
+          {filteredProducts.map((product) => (
+            <div key={product._id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
               <h3 className="font-black text-slate-800 uppercase italic truncate">{product.name}</h3>
-              <p className="text-[10px] font-black text-slate-400 uppercase mb-4">{product.category || 'No Category'}</p>
-              
+              <p className="text-[10px] font-black text-indigo-500 mb-4 tracking-widest">{product.code}</p>
               <div className="flex justify-between items-end">
                 <p className="text-xl font-black text-slate-800">Rs. {product.price}</p>
                 <p className="text-lg font-black text-emerald-500 italic">{product.qty} PCS</p>
               </div>
-
               <div className="mt-6 flex gap-2 pt-4 border-t border-slate-50">
                 <button onClick={() => { setEditingProduct(product); setIsModalOpen(true); }} className="flex-1 py-3 bg-slate-50 rounded-xl text-slate-400 hover:text-indigo-600"><Edit2 size={16} /></button>
                 <button onClick={() => setSelectedForBarcode(product)} className="flex-1 py-3 bg-slate-50 rounded-xl text-slate-400 hover:text-blue-600"><Barcode size={16} /></button>
@@ -165,7 +149,6 @@ const Inventory = () => {
           ))}
         </div>
 
-        {/* Add/Edit Modal */}
         <AnimatePresence>
           {isModalOpen && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
@@ -175,12 +158,11 @@ const Inventory = () => {
                 <form onSubmit={handleSaveProduct} className="space-y-4">
                   <input name="name" placeholder="Product Name" defaultValue={editingProduct?.name} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
                   <input name="code" placeholder="Barcode Code" defaultValue={editingProduct?.code} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
-                  <input name="category" placeholder="Category (e.g. Shirts, Foods)" defaultValue={editingProduct?.category} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
                   <div className="grid grid-cols-2 gap-4">
                     <input name="qty" type="number" placeholder="Qty" defaultValue={editingProduct?.qty} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
                     <input name="price" type="number" placeholder="Price" defaultValue={editingProduct?.price} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
                   </div>
-                  <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-indigo-200">Save Product</button>
+                  <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase text-xs tracking-widest">Save Product</button>
                 </form>
               </motion.div>
             </div>
@@ -188,7 +170,6 @@ const Inventory = () => {
         </AnimatePresence>
       </main>
 
-      {/* Hidden Barcode Component */}
       <div className="hidden">
         {selectedForBarcode && (
           <PrintableBarcode 
