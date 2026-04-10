@@ -30,7 +30,7 @@ const Business = mongoose.models.Business || mongoose.model('Business', new mong
   role: { type: String, default: 'Admin' }
 }, { timestamps: true }));
 
-// Product Model (Inventory සඳහා මෙය අනිවාර්යයි)
+// Product Model
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
   name: { type: String, required: true },
   code: { type: String, required: true, unique: true },
@@ -42,7 +42,7 @@ const Product = mongoose.models.Product || mongoose.model('Product', new mongoos
 
 // --- API ROUTES ---
 
-// Auth Routes
+// 1. Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { businessName, whatsapp, email, password, logo } = req.body;
@@ -70,17 +70,17 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Inventory Routes (දැන් මේවා ක්‍රියාත්මක වනු ඇත)
-app.get('/api/inventory', async (req, res) => {
+// 2. Inventory / Products Routes (Frontend එකේ /api/products ලෙස ඉල්ලන නිසා නම වෙනස් කරන ලදී)
+app.get('/api/products', async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
     res.json(products);
   } catch (error) {
-    res.status(500).json({ success: false, message: "Error loading inventory" });
+    res.status(500).json({ success: false, message: "Error loading products" });
   }
 });
 
-app.post('/api/inventory', async (req, res) => {
+app.post('/api/products', async (req, res) => {
   try {
     const { name, code, category, price, qty } = req.body;
     const existingProduct = await Product.findOne({ code });
@@ -90,6 +90,17 @@ app.post('/api/inventory', async (req, res) => {
     res.status(201).json({ success: true, product: newProduct });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to add product" });
+  }
+});
+
+// 3. Business Profile Route (Frontend එක /api/business ඉල්ලන නිසා මෙයද එක් කරන ලදී)
+app.get('/api/business', async (req, res) => {
+  try {
+    const business = await Business.findOne(); 
+    if (!business) return res.status(404).json({ message: "No business data" });
+    res.json(business);
+  } catch (error) {
+    res.status(500).json({ success: false });
   }
 });
 
