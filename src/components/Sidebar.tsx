@@ -8,22 +8,26 @@ const Sidebar = () => {
   const [currentUser, setCurrentUser] = useState<any>({});
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    setCurrentUser(user);
+    // currentUser ලබා ගැනීමේදී දත්ත තිබේදැයි පරීක්ෂා කරන්න
+    const userData = localStorage.getItem('currentUser');
+    if (userData) {
+      setCurrentUser(JSON.parse(userData));
+    }
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
     localStorage.removeItem('currentUser');
-    navigate('/login');
+    // Login path එක සාමාන්‍යයෙන් '/' හෝ '/login' විය හැක. App.tsx පරීක්ෂා කරන්න.
+    navigate('/'); 
   };
 
   const menuItems = [
-    { name: 'Dashboard', path: '/Dashboard', icon: <LayoutDashboard size={22} />, role: 'staff' },
-    { name: 'New Bill', path: '/NewBill', icon: <ShoppingCart size={22} />, role: 'staff' },
-    { name: 'Inventory', path: '/Inventory', icon: <Package size={22} />, role: 'staff' },
-    { name: 'Invoices', path: '/Invoices', icon: <FileText size={22} />, role: 'staff' },
-    { name: 'Accounts', path: '/Accounts', icon: <Settings size={22} />, role: 'admin' },
+    // මෙහි ඇති path එක අනිවාර්යයෙන්ම App.tsx හි <Route path="..." /> එකට සමාන විය යුතුය.
+    { name: 'Dashboard', path: '/Dashboard', icon: <LayoutDashboard size={22} />, role: 'Admin' },
+    { name: 'New Bill', path: '/NewBill', icon: <ShoppingCart size={22} />, role: 'Admin' },
+    { name: 'Inventory', path: '/Inventory', icon: <Package size={22} />, role: 'Admin' },
+    { name: 'Invoices', path: '/Invoices', icon: <FileText size={22} />, role: 'Admin' },
+    { name: 'Accounts', path: '/Accounts', icon: <Settings size={22} />, role: 'Admin' },
   ];
 
   return (
@@ -34,10 +38,15 @@ const Sidebar = () => {
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">Point of Sale</p>
       </div>
 
-      <nav className="flex-1 px-6 space-y-2">
+      <nav className="flex-1 px-6 space-y-2 overflow-y-auto">
         {menuItems.map((item) => {
-          if (item.role === 'admin' && currentUser.role !== 'admin') return null;
+          // මෙහිදී 'admin' (small) සහ 'Admin' (Capital) දෙකම සමානදැයි බලන්න. 
+          // සාමාන්‍යයෙන් ලොගින් වනවිට එන්නේ Capital 'Admin' නම් එය භාවිතා කරන්න.
+          const userRole = currentUser.role || '';
+          if (item.role === 'Admin' && userRole !== 'Admin') return null;
+
           const isActive = location.pathname === item.path;
+          
           return (
             <Link
               key={item.name}
@@ -59,8 +68,8 @@ const Sidebar = () => {
         <div className="flex items-center gap-3 mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
           <div className="bg-indigo-50 p-2 rounded-xl text-indigo-600"><UserCircle size={24} /></div>
           <div className="overflow-hidden">
-            <p className="text-xs font-black text-slate-800 truncate uppercase">{currentUser.name || 'User'}</p>
-            <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest italic">{currentUser.role || 'Staff Member'}</p>
+            <p className="text-xs font-black text-slate-800 truncate uppercase">{currentUser.name || 'Staff'}</p>
+            <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest italic">{currentUser.role || 'Member'}</p>
           </div>
         </div>
         <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 py-4 bg-rose-50 text-rose-600 rounded-2xl font-black text-[11px] tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm">
