@@ -1,19 +1,59 @@
 import React from 'react';
+import Barcode from 'react-barcode';
 
 const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, businessName }, ref) => {
+  if (!product) return null;
+
   return (
-    <div ref={ref} className="print:block hidden w-[50mm] h-[30mm] p-1 bg-white text-black">
-      <style>{`@media print { @page { size: 50mm 30mm; margin: 0; } }`}</style>
-      <div className="border border-gray-300 h-full flex flex-col items-center justify-between p-1">
-        <div className="text-[9px] font-bold uppercase truncate w-full text-center">{businessName}</div>
-        <div className="text-[10px] font-semibold text-center truncate w-full px-1">{product?.name}</div>
-        <img src={`https://bwipjs-api.metafloor.com/?bcid=code128&text=${product?.code}&scale=2&height=10`} alt="barcode" className="h-10 object-contain" />
-        <div className="w-full flex justify-between items-center px-1 border-t border-dotted">
-          <span className="text-[8px] font-mono">{product?.code}</span>
-          <span className="text-[12px] font-black italic">Rs.{product?.price}</span>
+    <div ref={ref} className="w-[50mm] h-[30mm] p-1 bg-white text-black font-sans">
+      {/* පින්ට් කරන විට පමණක් අවශ්‍ය Page Settings */}
+      <style>{`
+        @media print { 
+          @page { size: 50mm 30mm; margin: 0; } 
+          body { -webkit-print-color-adjust: exact; }
+        }
+      `}</style>
+
+      <div className="border-[1.5px] border-slate-800 h-full flex flex-col items-center justify-between p-1 rounded-sm">
+        
+        {/* Brand Name */}
+        <div className="text-[10px] font-black uppercase truncate w-full text-center leading-tight border-b border-slate-200 pb-0.5">
+          {businessName || "DIGI SOLUTIONS"}
+        </div>
+
+        {/* Product Name */}
+        <div className="text-[9px] font-bold text-center truncate w-full px-1 mt-0.5 uppercase">
+          {product.name}
+        </div>
+
+        {/* Barcode - React Barcode Library එක භාවිතා කර */}
+        <div className="flex justify-center items-center w-full scale-90 -my-1">
+          <Barcode 
+            value={product.code || "000000"} 
+            width={1.2} 
+            height={35} 
+            fontSize={10}
+            margin={0}
+            background="transparent"
+          />
+        </div>
+
+        {/* Footer: Code & Price */}
+        <div className="w-full flex justify-between items-end px-1 pt-0.5 border-t border-dashed border-slate-400">
+          <div className="flex flex-col items-start leading-none">
+            <span className="text-[7px] font-bold text-slate-500 uppercase tracking-tighter">Category</span>
+            <span className="text-[8px] font-black italic truncate max-w-[25mm]">{product.category || 'General'}</span>
+          </div>
+          <div className="text-right leading-none">
+            <span className="text-[13px] font-black italic tracking-tighter">
+              Rs.{Number(product.price).toLocaleString()}
+            </span>
+          </div>
         </div>
       </div>
     </div>
   );
 });
+
+PrintableBarcode.displayName = "PrintableBarcode";
 export default PrintableBarcode;
