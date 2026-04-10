@@ -31,14 +31,16 @@ const Business = mongoose.models.Business || mongoose.model('Business', new mong
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   try {
-    const { username, password } = req.body;
-    // Database එකේ email එක සහ password එක පරීක්ෂා කිරීම
+    const { username, password } = req.body; // Frontend එකෙන් එවන්නේ username සහ password
     const user = await Business.findOne({ email: username, password: password });
     
     if (user) {
-      res.json({ success: true, user: { name: user.name, role: user.role, email: user.email } });
+      res.json({ 
+        success: true, 
+        user: { name: user.name, role: user.role, email: user.email } 
+      });
     } else {
-      res.status(401).json({ success: false, message: "Invalid email or password" });
+      res.status(401).json({ success: false, message: "Invalid credentials" });
     }
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error" });
