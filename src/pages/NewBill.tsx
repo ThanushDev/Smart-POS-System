@@ -6,7 +6,6 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-// Socket connection initialization
 const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin);
 
 const NewBill = () => {
@@ -21,7 +20,6 @@ const NewBill = () => {
   const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // MongoDB එකෙන් ව්‍යාපාරික තොරතුරු ලබාගැනීම
     const fetchBusinessData = async () => {
       try {
         const res = await axios.get('/api/business');
@@ -31,11 +29,9 @@ const NewBill = () => {
       }
     };
 
-    // දැනට ලොගින් වී සිටින Cashier ගේ තොරතුරු ලබාගැනීම
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
     setCurrentUser(user);
 
-    // භාණ්ඩ ලැයිස්තුව ලබාගැනීම
     const fetchProducts = async () => {
       const res = await axios.get('/api/products');
       setProducts(res.data);
@@ -63,7 +59,6 @@ const NewBill = () => {
     const invId = `INV-${Date.now().toString().slice(-6)}`;
     
     try {
-      // 1. ඉන්වොයිසිය MongoDB හි ගබඩා කිරීම
       await axios.post('/api/invoices', { 
         invoiceId: invId, 
         items: cart, 
@@ -72,10 +67,8 @@ const NewBill = () => {
         cashier: currentUser?.name || 'Staff' 
       });
 
-      // 2. Stock Update එක පද්ධතිය පුරා Sync කිරීම
       socket.emit('update-data');
 
-      // 3. Low Stock WhatsApp Alert
       const lowStockItems = cart.filter(item => (item.qty - item.quantity) <= 5);
       if (lowStockItems.length > 0) {
         await axios.post('/api/alerts/whatsapp', { 
@@ -87,7 +80,6 @@ const NewBill = () => {
       setPaymentMethod(method);
       setShowPayModal(false);
       
-      // 4. බිල්පත මුද්‍රණය කිරීම
       setTimeout(() => { 
         window.print(); 
         setCart([]); 
@@ -100,10 +92,17 @@ const NewBill = () => {
     }
   };
 
+  // භාණ්ඩ නම හෝ බාර්කෝඩ් කේතය අනුව සෙවීමේ තර්කය (Search Logic)
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="flex h-screen bg-slate-50">
       <Sidebar />
       <main className="flex-1 p-8 flex gap-6 overflow-hidden">
+        
         {/* Product Selection Area */}
         <div className="flex-1 bg-white rounded-[2.5rem] p-8 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-6">
@@ -112,36 +111,44 @@ const NewBill = () => {
               <Search className="absolute left-3 top-3 text-slate-400" size={18} />
               <input 
                 type="text" 
-                placeholder="Search products..." 
-                className="w-full pl-10 pr-4 py-2 bg-slate-100 rounded-xl outline-none"
+                placeholder="Name or Code..." 
+                className="w-full pl-10 pr-4 py-2 bg-slate-100 rounded-xl outline-none font-bold italic"
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4 overflow-y-auto pr-2">
-            {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).map(product => (
+            {filteredProducts.map(product => (
               <button 
                 key={product._id} 
                 onClick={() => addToCart(product)}
                 className="p-4 bg-slate-50 rounded-3xl border-2 border-transparent hover:border-indigo-600 transition-all text-left group"
               >
-                <p className="font-black text-slate-800 uppercase group-hover:text-indigo-600">{product.name}</p>
-                <p className="text-indigo-500 font-black italic">Rs. {product.price}</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase mt-2">Stock: {product.qty}</p>
+                <p className="font-black text-slate-800 uppercase group-hover:text-indigo-600 truncate">{product.name}</p>
+                {/* භාණ්ඩයේ කේතය (Product Code) මෙතැන පෙන්වයි */}
+                <p className="text-[10px] font-black text-slate-400 tracking-widest uppercase">CODE: {product.code}</p>
+                
+                <div className="mt-3 flex justify-between items-end">
+                  <p className="text-indigo-600 font-black italic">Rs. {product.price}</p>
+                  <p className={`text-[10px] font-bold uppercase ${product.qty <= 5 ? 'text-rose-500' : 'text-slate-400'}`}>
+                    Stock: {product.qty}
+                  </p>
+                </div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Cart/Order Summary Area */}
+        {/* Cart Area */}
         <div className="w-96 bg-white rounded-[3rem] shadow-xl flex flex-col p-6 border border-slate-100">
           <h3 className="font-black text-slate-400 uppercase tracking-widest text-center mb-4">Current Order</h3>
           <div className="flex-1 overflow-y-auto space-y-3">
             {cart.map((item, i) => (
               <div key={i} className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
                 <div className="flex-1">
-                  <p className="font-bold text-sm uppercase">{item.name}</p>
+                  <p className="font-bold text-sm uppercase truncate">{item.name}</p>
+                  <p className="text-[10px] font-black text-slate-400 mb-1">{item.code}</p>
                   <p className="text-xs text-indigo-500 font-bold">Rs.{item.price} x {item.quantity}</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -159,7 +166,7 @@ const NewBill = () => {
             <button 
               onClick={() => setShowPayModal(true)} 
               disabled={cart.length === 0}
-              className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-200"
+              className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-200 active:scale-95 transition-all"
             >
               FINALIZE PAYMENT
             </button>
@@ -167,7 +174,7 @@ const NewBill = () => {
         </div>
       </main>
 
-      {/* Payment Method Popup */}
+      {/* Payment Modal */}
       {showPayModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[100]">
           <div className="bg-white p-10 rounded-[3rem] w-full max-w-sm text-center shadow-2xl border-t-8 border-indigo-600">
