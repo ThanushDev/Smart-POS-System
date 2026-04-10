@@ -21,18 +21,19 @@ const App: React.FC = () => {
       <Router>
         <main className="min-h-screen font-sans selection:bg-indigo-100 selection:text-indigo-900">
           <Routes>
+            {/* Auth Routes */}
             <Route path="/" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            <Route path="/Dashboard" element={<Dashboard />} />
-            <Route path="/NewBill" element={<NewBill />} />
-            <Route path="/Inventory" element={<Inventory />} />
-            <Route path="/Invoices" element={<Invoice />} />
+            {/* Main POS Routes (Lowercase used to fix 404 errors) */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/new-bill" element={<NewBill />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/invoices" element={<Invoice />} />
+            <Route path="/report" element={<Report />} />
+            <Route path="/accounts" element={<Accounts />} />
             
-            {/* මෙහි අකුරු Capital ලෙස නිවැරදි කර ඇත */}
-            <Route path="/Report" element={<Report />} />
-            <Route path="/Accounts" element={<Accounts />} />
-            
+            {/* Error Handling */}
             <Route path="/404" element={<NotFound />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
           </Routes>
@@ -40,6 +41,13 @@ const App: React.FC = () => {
           <ToastContainer
             position="bottom-right"
             autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
             theme="light"
           />
         </main>
