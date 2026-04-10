@@ -1,8 +1,9 @@
 {
+  "version": 2,
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://smart-pos-system-lilac.vercel.app//api/$1"
+      "destination": "/api/index.js"
     },
     {
       "source": "/(.*)",
