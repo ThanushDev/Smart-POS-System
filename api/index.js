@@ -1,89 +1,71 @@
-// api/index.js
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-require('dotenv').config();
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
+
+// Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Logo සහ Images සඳහා limit එක වැඩි කර ඇත
+app.use(express.json({ limit: '10mb' }));
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch(err => console.error("MongoDB Error:", err));
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// Models (Inline definition for simplicity in single file serverless)
-const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, code: String, price: Number, qty: Number, image: String, discount: Number
-}, { timestamps: true }));
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log("Digi Solutions DB Connected"))
+  .catch(err => console.error("MongoDB Connection Error:", err));
 
-const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, items: Array, total: Number, paymentMethod: String, cashier: String
-}, { timestamps: true }));
-
+// Business Model
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, whatsapp: String, email: String, logo: String
-}));
+  name: String,
+  whatsapp: String,
+  email: { type: String, unique: true },
+  password: { type: String, required: true },
+  logo: String,
+  role: { type: String, default: 'Admin' }
+}, { timestamps: true }));
 
-// --- API ROUTES ---
-
-// Dashboard Stats
-app.get('/api/dashboard/stats', async (req, res) => {
-  try {
-    const products = await Product.find({});
-    const startOfToday = new Date();
-    startOfToday.setHours(0,0,0,0);
-    const todayInvoices = await Invoice.find({ createdAt: { $gte: startOfToday } });
-    
-    res.json({
-      todayBills: todayInvoices.length,
-      todayIncome: todayInvoices.reduce((sum, inv) => sum + inv.total, 0),
-      totalProducts: products.length,
-      lowStockCount: products.filter(p => p.qty <= 5).length,
-      lowStockItems: products.filter(p => p.qty <= 5)
-    });
-  } catch (err) { res.status(500).json(err); }
-});
-
-// Products API
-app.get('/api/products', async (req, res) => {
-  const products = await Product.find({}).sort({ createdAt: -1 });
-  res.json(products);
-});
-
-app.post('/api/products', async (req, res) => {
-  const product = await Product.create(req.body);
-  res.json(product);
-});
-
-// Invoices API
-app.get('/api/invoices', async (req, res) => {
-  const invoices = await Invoice.find({}).sort({ createdAt: -1 });
-  res.json(invoices);
-});
-
-app.post('/api/invoices', async (req, res) => {
-  const invoice = await Invoice.create(req.body);
-  res.json(invoice);
-});
-
-// Business/Registration API
-app.get('/api/business', async (req, res) => {
-  const biz = await Business.findOne();
-  res.json(biz);
-});
-
+// API Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const biz = await Business.create({
-      name: req.body.businessName,
-      whatsapp: req.body.whatsapp,
-      email: req.body.email,
-      logo: req.body.logo
+    const { businessName, whatsapp, email, password, logo } = req.body;
+    const existingUser = await Business.findOne({ email });
+    
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: "Email already exists" });
+    }
+
+    const newBusiness = await Business.create({
+      name: businessName,
+      whatsapp,
+      email,
+      password,
+      logo
     });
-    res.json({ success: true, business: biz });
-  } catch (err) { res.status(500).json({ success: false }); }
+
+    res.status(201).json({ success: true, user: newBusiness });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
-module.exports = app;
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await Business.findOne({ email: username, password: password });
+
+    if (user) {
+      res.json({ success: true, user: { name: user.name, role: user.role, email: user.email } });
+    } else {
+      res.status(401).json({ success: false, message: "Invalid email or password" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+});
+
+// Vercel සඳහා export කිරීම
+export default app;
