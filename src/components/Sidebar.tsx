@@ -23,11 +23,11 @@ const Sidebar = () => {
 
   const menuItems = [
     // මෙහි ඇති path එක අනිවාර්යයෙන්ම App.tsx හි <Route path="..." /> එකට සමාන විය යුතුය.
-    { name: 'Dashboard', path: '/Dashboard', icon: <LayoutDashboard size={22} />, role: 'Admin' },
-    { name: 'New Bill', path: '/NewBill', icon: <ShoppingCart size={22} />, role: 'Admin' },
-    { name: 'Inventory', path: '/Inventory', icon: <Package size={22} />, role: 'Admin' },
-    { name: 'Invoices', path: '/Invoices', icon: <FileText size={22} />, role: 'Admin' },
-    { name: 'Accounts', path: '/Accounts', icon: <Settings size={22} />, role: 'Admin' },
+    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={22} />, role: 'Admin' },
+    { name: 'New Bill', path: '/new-bill', icon: <ShoppingCart size={22} />, role: 'Admin' },
+    { name: 'Inventory', path: '/inventory', icon: <Package size={22} />, role: 'Admin' },
+    { name: 'Invoices', path: '/invoices', icon: <FileText size={22} />, role: 'Admin' },
+    { name: 'Accounts', path: '/accounts', icon: <Settings size={22} />, role: 'Admin' },
   ];
 
   return (
