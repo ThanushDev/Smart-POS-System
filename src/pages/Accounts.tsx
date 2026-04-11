@@ -12,40 +12,29 @@ const Accounts = () => {
     try {
       const res = await axios.get('/api/users');
       setUsers(res.data);
-    } catch (err) {
-      toast.error("Failed to load users");
-    }
+    } catch (err) { toast.error("Failed to load users"); }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingId) {
         await axios.put(`/api/users/${editingId}`, newUser);
-        toast.success("User updated successfully");
+        toast.success("User updated");
       } else {
         await axios.post('/api/users/add', newUser);
         toast.success("Staff account created");
       }
       resetForm();
       fetchUsers();
-    } catch (err) {
-      toast.error("Process failed. Check if email is unique.");
-    }
+    } catch (err) { toast.error("Failed"); }
   };
 
   const startEdit = (user: any) => {
     setEditingId(user._id);
-    setNewUser({ 
-      name: user.name, 
-      email: user.email, 
-      password: user.password, 
-      role: user.role 
-    });
+    setNewUser({ name: user.name, email: user.email, password: user.password, role: user.role });
   };
 
   const resetForm = () => {
@@ -56,92 +45,34 @@ const Accounts = () => {
   return (
     <div className="p-10 bg-slate-50 min-h-screen">
       <header className="mb-10">
-        <h1 className="text-3xl font-black uppercase italic text-slate-800">
-          Control <span className="text-indigo-600">Panel</span>
-        </h1>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">
-          Manage system access and team members
-        </p>
+        <h1 className="text-3xl font-black uppercase italic text-slate-800">Control <span className="text-indigo-600">Panel</span></h1>
       </header>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* Form Section */}
-        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 h-fit">
-          <h2 className="text-xs font-black uppercase text-slate-400 mb-6 flex items-center gap-2">
-            {editingId ? <Edit3 size={16} className="text-amber-500" /> : <UserPlus size={16} />}
-            {editingId ? "Edit User Data" : "Register New Member"}
-          </h2>
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input 
-              type="text" placeholder="Full Name" required 
-              value={newUser.name} 
-              className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700" 
-              onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} 
-            />
-            <input 
-              type="email" placeholder="Email Address" required 
-              value={newUser.email} 
-              className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700" 
-              onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} 
-            />
-            <input 
-              type="password" placeholder="Password" required 
-              value={newUser.password} 
-              className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700" 
-              onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} 
-            />
-            <select 
-              className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700" 
-              value={newUser.role} 
-              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-            >
-              <option value="Staff">Staff Member</option>
-              <option value="Admin">System Admin</option>
+            <input type="text" placeholder="Full Name" value={newUser.name} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} required />
+            <input type="email" placeholder="Email" value={newUser.email} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} required />
+            <input type="password" placeholder="Password" value={newUser.password} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} required />
+            <select className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}>
+              <option value="Staff">Staff</option>
+              <option value="Admin">Admin</option>
             </select>
-            
-            <div className="flex gap-2">
-              <button 
-                type="submit" 
-                className={`flex-1 py-4 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all ${editingId ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-              >
-                {editingId ? "Update Member" : "Create Account"}
-              </button>
-              {editingId && (
-                <button type="button" onClick={resetForm} className="p-4 bg-slate-100 text-slate-500 rounded-2xl hover:bg-slate-200 transition-all">
-                  <XCircle size={20} />
-                </button>
-              )}
-            </div>
+            <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase">{editingId ? "Update" : "Create"}</button>
           </form>
         </div>
-
-        {/* List Section */}
-        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-          <h2 className="text-xs font-black uppercase text-slate-400 mb-6 flex items-center gap-2">
-            <UserCheck size={16} /> Current Team Members
-          </h2>
+        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] shadow-sm border">
           <div className="space-y-3">
             {users.map((u: any) => (
-              <div key={u._id} className="flex items-center justify-between p-5 bg-slate-50 rounded-3xl hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-slate-100">
+              <div key={u._id} className="flex items-center justify-between p-5 bg-slate-50 rounded-3xl">
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${u.role === 'Admin' ? 'bg-rose-100 text-rose-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-100 text-indigo-600">
                     {u.role === 'Admin' ? <Shield size={18} /> : <User size={18} />}
                   </div>
-                  <div>
-                    <p className="font-black text-slate-800 uppercase text-xs">{u.name}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">{u.email} • <span className="text-indigo-500">{u.role}</span></p>
-                  </div>
+                  <div><p className="font-black text-xs uppercase">{u.name}</p><p className="text-[10px] text-slate-400">{u.email}</p></div>
                 </div>
-                
                 <div className="flex gap-2">
-                  <button onClick={() => startEdit(u)} className="text-amber-500 p-2 hover:bg-amber-50 rounded-xl transition-all">
-                    <Edit3 size={18} />
-                  </button>
-                  {u.role !== 'Admin' && (
-                    <button onClick={async () => { if(confirm("Delete this user?")) { await axios.delete(`/api/users/${u._id}`); fetchUsers(); } }} className="text-rose-400 p-2 hover:bg-rose-50 rounded-xl transition-all">
-                      <Trash2 size={18} />
-                    </button>
-                  )}
+                  <button onClick={() => startEdit(u)} className="text-amber-500"><Edit3 size={18} /></button>
+                  {u.role !== 'Admin' && <button onClick={async () => { if(confirm("Delete?")) { await axios.delete(`/api/users/${u._id}`); fetchUsers(); } }} className="text-rose-400"><Trash2 size={18} /></button>}
                 </div>
               </div>
             ))}
