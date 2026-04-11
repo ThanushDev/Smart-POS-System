@@ -33,7 +33,9 @@ const Business = mongoose.models.Business || mongoose.model('Business', new mong
   password: { type: String, required: true }, 
   role: { type: String, default: 'Admin' },
   whatsapp: String,
-  businessId: String 
+  businessId: String,
+  address: String,
+  logo: String
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
@@ -57,14 +59,13 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 
 // --- API ROUTES ---
 
-// 1. AUTHENTICATION (Login Fix - Roles properly sent)
+// 1. AUTHENTICATION (Login - Works for both Staff & Admin)
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   const { username, password } = req.body;
   try {
     const user = await Business.findOne({ email: username, password: password });
     if (user) {
-      // FIX: role සහ businessId හරියටම යැවීම
       res.json({ 
         success: true, 
         user: { 
@@ -83,15 +84,28 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2. PRODUCTS (Full CRUD retained)
+// 2. REGISTRATION (Used by Admin Signup)
+app.post('/api/auth/register', async (req, res) => {
+  await connectDB();
+  try {
+    const { name, email, password, role, whatsapp, address, logo } = req.body;
+    const existing = await Business.findOne({ email });
+    if (existing) return res.status(400).json({ success: false, message: "Email already registered" });
+
+    const newUser = await Business.create({ name, email, password, role, whatsapp, address, logo });
+    res.status(201).json({ success: true, user: newUser });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Registration failed" });
+  }
+});
+
+// 3. PRODUCTS (Full CRUD)
 app.get('/api/products', async (req, res) => {
   await connectDB();
   try {
     const products = await Product.find().sort({ createdAt: -1 });
     res.json(products);
-  } catch (err) {
-    res.status(500).json([]);
-  }
+  } catch (err) { res.status(500).json([]); }
 });
 
 app.post('/api/products', async (req, res) => {
@@ -99,9 +113,7 @@ app.post('/api/products', async (req, res) => {
   try {
     const newProduct = await Product.create(req.body);
     res.status(201).json({ success: true, product: newProduct });
-  } catch (err) {
-    res.status(500).json({ success: false });
-  }
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.put('/api/products/:id', async (req, res) => {
@@ -109,9 +121,7 @@ app.put('/api/products/:id', async (req, res) => {
   try {
     const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json({ success: true, product: updated });
-  } catch (err) {
-    res.status(500).json({ success: false });
-  }
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.delete('/api/products/:id', async (req, res) => {
@@ -119,12 +129,10 @@ app.delete('/api/products/:id', async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false });
-  }
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// 3. INVOICES (Safe mapping logic retained)
+// 4. INVOICES (Safe mapping logic retained)
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   try {
@@ -149,70 +157,69 @@ app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const newInvoice = await Invoice.create(req.body);
-    // Stock reduction logic retained
     for (const item of req.body.items) {
       await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
     }
     res.status(201).json(newInvoice);
-  } catch (err) {
-    res.status(500).json({ success: false });
-  }
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.delete('/api/invoices/:id', async (req, res) => {
   await connectDB();
   try {
-    const deleted = await Invoice.findByIdAndDelete(req.params.id);
-    if (!deleted) {
-      return res.status(404).json({ success: false, message: "Invoice not found" });
-    }
-    res.json({ success: true, message: "Invoice deleted from MongoDB" });
-  } catch (err) {
-    console.error("Delete error:", err);
-    res.status(500).json({ success: false, message: "Server error during deletion" });
-  }
+    await Invoice.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Deleted" });
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// 4. BUSINESS SETTINGS (Full Logic retained)
-app.get('/api/business', async (req, res) => {
-  await connectDB();
-  try {
-    const business = await Business.findOne();
-    res.json(business || { name: "Digi Solutions", whatsapp: "" });
-  } catch (err) {
-    res.json({ name: "Digi Solutions", whatsapp: "" });
-  }
-});
-
-app.put('/api/business/update', async (req, res) => {
-  await connectDB();
-  try {
-    const updated = await Business.findOneAndUpdate({}, req.body, { new: true, upsert: true });
-    res.json({ success: true, business: updated });
-  } catch (err) {
-    res.status(500).json({ success: false });
-  }
-});
-
-// 5. USER MANAGEMENT (Full Logic retained)
-app.post('/api/users/register', async (req, res) => {
-  await connectDB();
-  try {
-    const newUser = await Business.create(req.body);
-    res.status(201).json({ success: true, user: newUser });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Registration failed" });
-  }
-});
-
+// 5. USER MANAGEMENT (With Edit and Delete)
 app.get('/api/users', async (req, res) => {
   await connectDB();
   try {
     const users = await Business.find();
     res.json(users);
-  } catch (err) {
-    res.status(500).json([]);
-  }
+  } catch (err) { res.status(500).json([]); }
+});
+
+app.post('/api/users/add', async (req, res) => {
+  await connectDB();
+  try {
+    const newUser = await Business.create(req.body);
+    res.status(201).json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+app.put('/api/users/:id', async (req, res) => {
+  await connectDB();
+  try {
+    await Business.findByIdAndUpdate(req.params.id, req.body);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  await connectDB();
+  try {
+    await Business.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+// 6. BUSINESS SETTINGS
+app.get('/api/business', async (req, res) => {
+  await connectDB();
+  try {
+    const business = await Business.findOne({ role: 'Admin' });
+    res.json(business || { name: "Digi Solutions", whatsapp: "" });
+  } catch (err) { res.json({ name: "Digi Solutions", whatsapp: "" }); }
+});
+
+app.put('/api/business/update', async (req, res) => {
+  await connectDB();
+  try {
+    const updated = await Business.findOneAndUpdate({ role: 'Admin' }, req.body, { new: true, upsert: true });
+    res.json({ success: true, business: updated });
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
 export default app;
