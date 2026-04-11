@@ -6,14 +6,12 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 const MONGODB_URI = process.env.MONGODB_URI;
 let isConnected = false;
 
-// Database Connection
 const connectDB = async () => {
   if (isConnected) return;
   try {
@@ -26,200 +24,91 @@ const connectDB = async () => {
 };
 
 // --- DATABASE MODELS ---
-
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, 
-  email: { type: String, unique: true }, 
-  password: { type: String, required: true }, 
-  role: { type: String, default: 'Admin' },
-  whatsapp: String,
-  businessId: String,
-  address: String,
-  logo: String
+  name: String, email: { type: String, unique: true }, password: { type: String, required: true }, 
+  role: { type: String, default: 'Admin' }, whatsapp: String, businessId: String, address: String, logo: String
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, 
-  code: String, 
-  price: Number, 
-  qty: Number,
-  discount: { type: Number, default: 0 } 
+  name: String, code: String, price: Number, qty: Number, discount: { type: Number, default: 0 } 
 }, { timestamps: true }));
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, 
-  items: Array, 
-  total: Number, 
-  discountTotal: { type: Number, default: 0 },
-  paymentMethod: String, 
-  cashier: String,
-  businessId: String 
+  invoiceId: String, items: Array, total: Number, discountTotal: { type: Number, default: 0 },
+  paymentMethod: String, cashier: String, businessId: String 
 }, { timestamps: true }));
-
 
 // --- API ROUTES ---
 
-// 1. AUTHENTICATION (Login - Works for both Staff & Admin)
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   const { username, password } = req.body;
   try {
     const user = await Business.findOne({ email: username, password: password });
     if (user) {
-      res.json({ 
-        success: true, 
-        user: { 
-          _id: user._id,
-          name: user.name, 
-          role: user.role, 
-          email: user.email,
-          businessId: user.businessId || user._id 
-        } 
-      });
+      res.json({ success: true, user: { _id: user._id, name: user.name, role: user.role, email: user.email, businessId: user.businessId || user._id } });
     } else {
       res.status(401).json({ success: false, message: "Invalid credentials" });
     }
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
-  }
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// 2. REGISTRATION (Used by Admin Signup)
-app.post('/api/auth/register', async (req, res) => {
-  await connectDB();
-  try {
-    const { name, email, password, role, whatsapp, address, logo } = req.body;
-    const existing = await Business.findOne({ email });
-    if (existing) return res.status(400).json({ success: false, message: "Email already registered" });
-
-    const newUser = await Business.create({ name, email, password, role, whatsapp, address, logo });
-    res.status(201).json({ success: true, user: newUser });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Registration failed" });
-  }
-});
-
-// 3. PRODUCTS (Full CRUD)
+// Products CRUD
 app.get('/api/products', async (req, res) => {
   await connectDB();
-  try {
-    const products = await Product.find().sort({ createdAt: -1 });
-    res.json(products);
-  } catch (err) { res.status(500).json([]); }
+  const products = await Product.find().sort({ createdAt: -1 });
+  res.json(products);
 });
 
 app.post('/api/products', async (req, res) => {
   await connectDB();
-  try {
-    const newProduct = await Product.create(req.body);
-    res.status(201).json({ success: true, product: newProduct });
-  } catch (err) { res.status(500).json({ success: false }); }
+  const newProduct = await Product.create(req.body);
+  res.status(201).json({ success: true, product: newProduct });
 });
 
 app.put('/api/products/:id', async (req, res) => {
   await connectDB();
-  try {
-    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json({ success: true, product: updated });
-  } catch (err) { res.status(500).json({ success: false }); }
+  const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json({ success: true, product: updated });
 });
 
+// DELETE WITH ADMIN CHECK
 app.delete('/api/products/:id', async (req, res) => {
   await connectDB();
-  try {
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (err) { res.status(500).json({ success: false }); }
+  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Admin Only" });
+  await Product.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
 });
 
-// 4. INVOICES (Safe mapping logic retained)
+// Invoices CRUD
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
-  try {
-    const invoices = await Invoice.find().sort({ createdAt: -1 });
-    const safeInvoices = invoices.map(inv => ({
-      _id: inv._id,
-      invoiceId: inv.invoiceId || 'N/A',
-      items: inv.items || [],
-      total: inv.total || 0,
-      discountTotal: inv.discountTotal || 0,
-      paymentMethod: inv.paymentMethod || 'Cash',
-      cashier: inv.cashier || 'Staff',
-      createdAt: inv.createdAt
-    }));
-    res.json(safeInvoices);
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to load records" });
-  }
+  const invoices = await Invoice.find().sort({ createdAt: -1 });
+  res.json(invoices);
 });
 
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
-  try {
-    const newInvoice = await Invoice.create(req.body);
-    for (const item of req.body.items) {
-      await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
-    }
-    res.status(201).json(newInvoice);
-  } catch (err) { res.status(500).json({ success: false }); }
+  const newInvoice = await Invoice.create(req.body);
+  for (const item of req.body.items) {
+    await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
+  }
+  res.status(201).json(newInvoice);
 });
 
+// DELETE WITH ADMIN CHECK
 app.delete('/api/invoices/:id', async (req, res) => {
   await connectDB();
-  try {
-    await Invoice.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: "Deleted" });
-  } catch (err) { res.status(500).json({ success: false }); }
+  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Admin Only" });
+  await Invoice.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
 });
 
-// 5. USER MANAGEMENT (With Edit and Delete)
-app.get('/api/users', async (req, res) => {
-  await connectDB();
-  try {
-    const users = await Business.find();
-    res.json(users);
-  } catch (err) { res.status(500).json([]); }
-});
-
-app.post('/api/users/add', async (req, res) => {
-  await connectDB();
-  try {
-    const newUser = await Business.create(req.body);
-    res.status(201).json({ success: true });
-  } catch (err) { res.status(500).json({ success: false }); }
-});
-
-app.put('/api/users/:id', async (req, res) => {
-  await connectDB();
-  try {
-    await Business.findByIdAndUpdate(req.params.id, req.body);
-    res.json({ success: true });
-  } catch (err) { res.status(500).json({ success: false }); }
-});
-
-app.delete('/api/users/:id', async (req, res) => {
-  await connectDB();
-  try {
-    await Business.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (err) { res.status(500).json({ success: false }); }
-});
-
-// 6. BUSINESS SETTINGS
+// Business Info
 app.get('/api/business', async (req, res) => {
   await connectDB();
-  try {
-    const business = await Business.findOne({ role: 'Admin' });
-    res.json(business || { name: "Digi Solutions", whatsapp: "" });
-  } catch (err) { res.json({ name: "Digi Solutions", whatsapp: "" }); }
-});
-
-app.put('/api/business/update', async (req, res) => {
-  await connectDB();
-  try {
-    const updated = await Business.findOneAndUpdate({ role: 'Admin' }, req.body, { new: true, upsert: true });
-    res.json({ success: true, business: updated });
-  } catch (err) { res.status(500).json({ success: false }); }
+  const business = await Business.findOne({ role: 'Admin' });
+  res.json(business || { name: "Digi Solutions" });
 });
 
 export default app;
