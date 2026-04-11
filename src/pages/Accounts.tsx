@@ -11,7 +11,6 @@ const Accounts = () => {
   const [adminPassword, setAdminPassword] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // User Management State
   const [isEditing, setIsEditing] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ 
@@ -23,10 +22,15 @@ const Accounts = () => {
   });
 
   useEffect(() => {
-    // LocalStorage එකේ 'user' හෝ 'currentUser' නමින් දත්ත තිබිය හැක
-    const storedUser = localStorage.getItem('user') || localStorage.getItem('currentUser');
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
+    // FIX: Checking multiple keys to ensure session is captured
+    const storedData = localStorage.getItem('user') || localStorage.getItem('currentUser') || localStorage.getItem('authUser');
+    if (storedData) {
+      try {
+        const parsedUser = JSON.parse(storedData);
+        setCurrentUser(parsedUser);
+      } catch (e) {
+        console.error("Session parse error");
+      }
     }
     fetchUsers();
   }, []);
@@ -36,7 +40,7 @@ const Accounts = () => {
       const res = await axios.get('/api/users');
       setUsers(res.data);
     } catch (err) {
-      console.error("User fetch error");
+      console.error("Failed to load users");
     }
   };
 
@@ -44,46 +48,40 @@ const Accounts = () => {
     e.preventDefault();
     setLoading(true);
 
-    // වර්තමාන Admin ගේ ID එක Business ID එක ලෙස භාවිතා කරයි
+    // FIX: Retrieve Business ID dynamically
     const businessId = currentUser?.businessId || currentUser?._id;
 
     if (!businessId) {
-      toast.error("Session expired. Please re-login.");
+      toast.error("Session Error: Please log out and log in again.");
       setLoading(false);
       return;
     }
 
-    // Backend එකට යවන දත්ත structure එක
     const payload = {
       ...formData,
-      businessId: businessId // මෙය අනිවාර්යයෙන්ම තිබිය යුතුයි
+      businessId: businessId 
     };
 
     try {
       if (isEditing) {
-        // Edit කිරීමේදී password හිස් නම් එය payload එකෙන් ඉවත් කරයි
         if (!payload.password) delete (payload as any).password;
-        
         await axios.put(`/api/users/${selectedUserId}`, payload);
-        toast.success("User Updated Successfully!");
+        toast.success("User profile updated successfully!");
       } else {
-        // අලුත් කෙනෙක් නම් Password අනිවාර්යයි
         if (!formData.password) {
-          toast.error("Password is required for new users!");
+          toast.error("Password is required for new registration.");
           setLoading(false);
           return;
         }
         await axios.post('/api/users/register', payload);
-        toast.success("New User Added Successfully!");
+        toast.success("New staff member registered!");
       }
       
       resetForm();
       fetchUsers();
     } catch (err: any) {
-      // Backend එකෙන් එන නිවැරදිම Error එක පෙන්වීම
-      const msg = err.response?.data?.message || "Action failed. Username might be taken.";
+      const msg = err.response?.data?.message || "Action failed. Check if username is already taken.";
       toast.error(msg);
-      console.error("Submit Error:", err.response?.data);
     } finally {
       setLoading(false);
     }
@@ -96,7 +94,7 @@ const Accounts = () => {
     setFormData({ 
       name: user.name, 
       username: user.username, 
-      password: '', // Password එක වෙනස් කිරීමට අවශ්‍ය නම් පමණක් පිරවීමට හිස්ව තබයි
+      password: '', 
       role: user.role, 
       image: user.image || '' 
     });
@@ -109,7 +107,7 @@ const Accounts = () => {
   };
 
   const handleMasterReset = async () => {
-    if (!adminPassword) return toast.error("Please enter password");
+    if (!adminPassword) return toast.error("Admin password is required.");
     try {
       const res = await axios.post('/api/auth/verify-admin', { 
         username: currentUser.username, 
@@ -117,24 +115,24 @@ const Accounts = () => {
       });
 
       if (res.data.success) {
-        if (confirm("වැදගත්: මෙයින් ඔබගේ ව්‍යාපාරයේ සියලුම විකුණුම්, බඩු බාහිරාදිය සහ ගිණුම් මැකී යනු ඇත. මෙය නැවත ලබා ගත නොහැක!")) {
+        if (confirm("WARNING: This will permanently delete ALL sales, inventory, and account data for this shop. Proceed?")) {
           await axios.post('/api/system/reset-shop', { businessId: currentUser?.businessId || currentUser?._id });
           localStorage.clear();
-          toast.warn("System Data Wiped!");
+          toast.warn("System reset complete.");
           window.location.href = '/register';
         }
       } else {
-        toast.error("Incorrect Admin Password!");
+        toast.error("Invalid Admin credentials.");
       }
     } catch (err) {
-      toast.error("Authorization failed.");
+      toast.error("Identity verification failed.");
     }
   };
 
   const handleImageChange = (e: any) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 1.5 * 1024 * 1024) return toast.error("Image too large (Max 1.5MB)");
+      if (file.size > 1024 * 1024) return toast.error("Image too large. Max limit is 1MB.");
       const reader = new FileReader();
       reader.onloadend = () => setFormData({ ...formData, image: reader.result as string });
       reader.readAsDataURL(file);
@@ -148,9 +146,9 @@ const Accounts = () => {
         <header className="mb-10 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-black italic text-slate-800 uppercase tracking-tighter flex items-center gap-3">
-              <UserCircle className="text-indigo-600" size={32} /> Accounts
+              <UserCircle className="text-indigo-600" size={32} /> User Accounts
             </h1>
-            <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Manage your shop staff and credentials</p>
+            <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Create and Manage Staff Access</p>
           </div>
           <button onClick={fetchUsers} className="p-3 bg-white rounded-2xl shadow-sm text-slate-400 hover:text-indigo-600 transition-all">
             <RefreshCw size={20} />
@@ -159,12 +157,12 @@ const Accounts = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* USER FORM SECTION */}
+          {/* REGISTRATION FORM */}
           <div className="lg:col-span-4 h-fit sticky top-8">
             <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
               <h2 className="text-xl font-black italic mb-6 uppercase flex items-center gap-2 text-slate-700">
                 {isEditing ? <Edit3 size={20} className="text-amber-500"/> : <UserPlus size={20} className="text-indigo-600"/>} 
-                {isEditing ? 'Edit Profile' : 'New Staff'}
+                {isEditing ? 'Update User' : 'Register Staff'}
               </h2>
               
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -188,7 +186,7 @@ const Accounts = () => {
                   <input type="text" placeholder="Full Name" className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-100 font-bold text-sm" required 
                     onChange={e => setFormData({...formData, name: e.target.value})} value={formData.name} />
                   
-                  <input type="text" placeholder="Login Username" className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-100 font-bold text-sm" required 
+                  <input type="text" placeholder="Username" className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-100 font-bold text-sm" required 
                     onChange={e => setFormData({...formData, username: e.target.value})} value={formData.username} />
                   
                   <input type="password" placeholder={isEditing ? "New Password (Optional)" : "Password"} className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-100 font-bold text-sm" required={!isEditing}
@@ -197,7 +195,7 @@ const Accounts = () => {
                   <select className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-[10px] uppercase text-slate-600" value={formData.role}
                     onChange={e => setFormData({...formData, role: e.target.value})}>
                     <option value="Staff">Staff Member</option>
-                    <option value="Admin">System Admin</option>
+                    <option value="Admin">System Administrator</option>
                   </select>
                 </div>
 
@@ -206,17 +204,17 @@ const Accounts = () => {
                     <button type="button" onClick={resetForm} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-[10px]">Cancel</button>
                   )}
                   <button disabled={loading} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50">
-                    {loading ? <Loader2 className="animate-spin" size={16}/> : <><Save size={16} /> {isEditing ? 'Update' : 'Register'}</>}
+                    {loading ? <Loader2 className="animate-spin" size={16}/> : <><Save size={16} /> {isEditing ? 'Save Changes' : 'Create Account'}</>}
                   </button>
                 </div>
               </form>
             </div>
           </div>
 
-          {/* USER LIST SECTION */}
+          {/* USER LIST */}
           <div className="lg:col-span-8 space-y-6">
             <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
-              <h2 className="text-xl font-black italic mb-6 uppercase text-slate-700">Team Profiles</h2>
+              <h2 className="text-xl font-black italic mb-6 uppercase text-slate-700">System Users</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {users.map((u: any) => (
                   <div key={u._id} className="flex justify-between items-center p-4 bg-slate-50 rounded-[2rem] border border-transparent hover:border-indigo-100 hover:bg-white hover:shadow-md transition-all group">
@@ -230,9 +228,9 @@ const Accounts = () => {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => handleEdit(u)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit3 size={14} /></button>
+                      <button title="Edit" onClick={() => handleEdit(u)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit3 size={14} /></button>
                       {u.role !== 'Admin' && (
-                        <button onClick={async () => { if(confirm("Delete User?")) { await axios.delete(`/api/users/${u._id}`); fetchUsers(); } }} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Trash2 size={14} /></button>
+                        <button title="Delete" onClick={async () => { if(confirm(`Delete ${u.name}?`)) { await axios.delete(`/api/users/${u._id}`); fetchUsers(); toast.info("User deleted."); } }} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Trash2 size={14} /></button>
                       )}
                     </div>
                   </div>
@@ -240,13 +238,13 @@ const Accounts = () => {
               </div>
             </div>
 
-            {/* RESET ZONE */}
+            {/* DANGER ZONE */}
             <div className="bg-rose-50 p-8 rounded-[3rem] border-2 border-rose-100 flex flex-col md:flex-row justify-between items-center gap-6">
               <div>
                 <h2 className="text-lg font-black italic uppercase text-rose-600 flex items-center gap-2 mb-1">
-                  <ShieldAlert size={20} /> Master Reset
+                  <ShieldAlert size={20} /> Master Data Reset
                 </h2>
-                <p className="text-rose-400 text-[10px] font-bold uppercase opacity-80 italic">Caution: Wipes all sales and inventory data for this shop.</p>
+                <p className="text-rose-400 text-[10px] font-bold uppercase opacity-80 italic">Permanently wipe all shop business data.</p>
               </div>
               <button onClick={() => setShowResetModal(true)} className="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs shadow-lg shadow-rose-200">
                 Wipe All Data
@@ -256,17 +254,17 @@ const Accounts = () => {
 
         </div>
 
-        {/* AUTH MODAL */}
+        {/* RESET MODAL */}
         {showResetModal && (
           <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
             <div className="bg-white p-10 rounded-[3.5rem] w-full max-w-sm text-center shadow-2xl">
               <KeyRound className="mx-auto text-rose-600 mb-4" size={40} />
-              <h2 className="font-black text-xl mb-2 uppercase italic text-slate-800">Verify Admin</h2>
-              <input type="password" placeholder="PASSWORD" className="w-full p-4 bg-slate-100 rounded-2xl mb-6 outline-none border-2 border-transparent focus:border-rose-600 text-center font-black"
+              <h2 className="font-black text-xl mb-2 uppercase italic text-slate-800">Admin Authentication</h2>
+              <input type="password" placeholder="ENTER PASSWORD" className="w-full p-4 bg-slate-100 rounded-2xl mb-6 outline-none border-2 border-transparent focus:border-rose-600 text-center font-black"
                 onChange={(e) => setAdminPassword(e.target.value)} />
               <div className="flex gap-3">
-                <button onClick={() => setShowResetModal(false)} className="flex-1 py-4 font-black bg-slate-100 rounded-2xl text-slate-400 uppercase text-[10px]">Back</button>
-                <button onClick={handleMasterReset} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-[10px]">Reset</button>
+                <button onClick={() => setShowResetModal(false)} className="flex-1 py-4 font-black bg-slate-100 rounded-2xl text-slate-400 uppercase text-[10px]">Cancel</button>
+                <button onClick={handleMasterReset} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-[10px]">Reset Now</button>
               </div>
             </div>
           </div>
