@@ -14,16 +14,14 @@ const Invoice = () => {
   const [isLoading, setIsLoading] = useState(true);
   const printRef = useRef<HTMLDivElement>(null);
 
-  // 1. MongoDB එකෙන් Invoices සහ Business Info ලබා ගැනීම
+  // 1. Data ලබා ගැනීම
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      // එකවර API දෙකම Call කිරීම
       const [invRes, bizRes] = await Promise.all([
         axios.get('/api/invoices'),
         axios.get('/api/business')
       ]);
-      
       setInvoices(invRes.data);
       setBusinessInfo(bizRes.data);
     } catch (err) {
@@ -37,12 +35,12 @@ const Invoice = () => {
     fetchData();
   }, []);
 
-  // 2. Invoice එකක් මැකීම (MongoDB Delete)
+  // 2. Invoice එකක් මැකීම (FIXED URL)
   const handleDeleteInvoice = async (id: string) => {
-    if (window.confirm("Are you want delete this bill permenently?")) {
+    if (window.confirm("Are you sure you want to delete this bill permanently?")) {
       try {
-        // Query param එකක් ලෙස ID එක යැවීම
-        await axios.delete(`/api/invoices?id=${id}`);
+        // FIXED: Query (?id=) වෙනුවට Path Parameter (/:id) භාවිතා කර ඇත
+        await axios.delete(`/api/invoices/${id}`);
         setInvoices(invoices.filter(inv => inv._id !== id));
         toast.success("Invoice deleted successfully");
       } catch (err) {
@@ -51,9 +49,9 @@ const Invoice = () => {
     }
   };
 
-  // 3. Search කිරීමේ පහසුකම
+  // 3. Search කිරීම
   const filteredInvoices = invoices.filter(inv => 
-    (inv.invoiceId || inv.id || "").toLowerCase().includes(search.toLowerCase())
+    (inv.invoiceId || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const handleReprint = (inv: any) => {
@@ -191,7 +189,6 @@ const Invoice = () => {
         </AnimatePresence>
       </main>
 
-      {/* Hidden Printable Component */}
       <div className="hidden">
         {selectedInvoice && (
           <PrintableBill 
