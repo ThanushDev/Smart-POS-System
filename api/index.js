@@ -17,8 +17,10 @@ const connectDB = async () => {
   try {
     const db = await mongoose.connect(MONGODB_URI);
     isConnected = db.connections[0].readyState === 1;
-    console.log("MongoDB Connected");
-  } catch (err) { console.error("DB Error:", err); }
+    console.log("Connected to MongoDB Atlas");
+  } catch (err) {
+    console.error("MongoDB Connection Error:", err);
+  }
 };
 
 // --- MODELS ---
@@ -36,7 +38,7 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 
 // --- API ROUTES ---
 
-// 1. Auth Routes
+// 1. AUTH ROUTES
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   try {
@@ -45,12 +47,12 @@ app.post('/api/auth/login', async (req, res) => {
     if (user) {
       res.json({ success: true, user: { name: user.name, role: user.role, email: user.email } });
     } else {
-      res.status(401).json({ success: false, message: "Invalid email or password" });
+      res.status(401).json({ success: false, message: "Invalid credentials" });
     }
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// 2. Inventory Routes
+// 2. INVENTORY ROUTES
 app.get('/api/products', async (req, res) => {
   await connectDB();
   try {
@@ -67,7 +69,16 @@ app.post('/api/products', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// 3. Invoice Routes
+// *** DELETE PRODUCT ***
+app.delete('/api/products/:id', async (req, res) => {
+  await connectDB();
+  try {
+    await Product.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Product deleted" });
+  } catch (error) { res.status(500).json({ success: false }); }
+});
+
+// 3. INVOICE ROUTES
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   try {
@@ -80,7 +91,7 @@ app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const newInvoice = await Invoice.create(req.body);
-    // Stock update කිරීම
+    // Stock deduction
     for (const item of req.body.items) {
       await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
     }
@@ -88,7 +99,16 @@ app.post('/api/invoices', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// 4. Dashboard Stats
+// *** DELETE INVOICE ***
+app.delete('/api/invoices/:id', async (req, res) => {
+  await connectDB();
+  try {
+    await Invoice.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Invoice deleted" });
+  } catch (error) { res.status(500).json({ success: false }); }
+});
+
+// 4. DASHBOARD STATS
 app.get('/api/dashboard/stats', async (req, res) => {
   await connectDB();
   try {
@@ -108,10 +128,13 @@ app.get('/api/dashboard/stats', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
+// 5. BUSINESS DATA
 app.get('/api/business', async (req, res) => {
   await connectDB();
-  const business = await Business.findOne();
-  res.json(business);
+  try {
+    const business = await Business.findOne();
+    res.json(business);
+  } catch (error) { res.status(500).json({ success: false }); }
 });
 
 export default app;
