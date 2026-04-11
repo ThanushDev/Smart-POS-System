@@ -60,19 +60,22 @@ app.get('/api/products', async (req, res) => {
   res.json(products);
 });
 
+// ADD PRODUCT (Staff can add)
 app.post('/api/products', async (req, res) => {
   await connectDB();
   const newProduct = await Product.create(req.body);
   res.status(201).json({ success: true, product: newProduct });
 });
 
+// EDIT PRODUCT (Admin Only)
 app.put('/api/products/:id', async (req, res) => {
   await connectDB();
+  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Admin Only" });
   const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
   res.json({ success: true, product: updated });
 });
 
-// DELETE WITH ADMIN CHECK
+// DELETE PRODUCT (Admin Only)
 app.delete('/api/products/:id', async (req, res) => {
   await connectDB();
   if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Admin Only" });
@@ -80,7 +83,7 @@ app.delete('/api/products/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// Invoices CRUD
+// Invoices Routes
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   const invoices = await Invoice.find().sort({ createdAt: -1 });
@@ -96,7 +99,6 @@ app.post('/api/invoices', async (req, res) => {
   res.status(201).json(newInvoice);
 });
 
-// DELETE WITH ADMIN CHECK
 app.delete('/api/invoices/:id', async (req, res) => {
   await connectDB();
   if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Admin Only" });
@@ -104,7 +106,6 @@ app.delete('/api/invoices/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// Business Info
 app.get('/api/business', async (req, res) => {
   await connectDB();
   const business = await Business.findOne({ role: 'Admin' });
