@@ -18,17 +18,21 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      // Backend එකට දත්ත යැවීම
       const res = await axios.post('/api/auth/login', formData);
       
       if (res.data.success) {
         const user = res.data.user;
         
-        // මීට පෙර තිබූ දත්ත ඉවත් කර අලුත් 'user' දත්ත ඇතුළත් කිරීම
+        // පරණ දත්ත clear කර අලුත් 'user' දත්ත ඇතුළත් කිරීම
+        // Sidebar එකේ දත්ත පෙන්වීමට මෙම 'user' කියන key එකම භාවිතා කළ යුතුයි
         localStorage.clear();
         localStorage.setItem('user', JSON.stringify(user));
         
         toast.success(`Welcome back, ${user.name}!`);
 
+        // Navigation logic
+        // ඔයාගේ Routes වල Dashboard එක පටන් ගන්නේ Capital 'D' අකුරෙන් නම් එය එලෙසම තිබිය යුතුයි
         if (user.role === 'Admin') {
           navigate('/Dashboard');
         } else {
@@ -45,6 +49,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500 rounded-full blur-[120px]"></div>
@@ -104,7 +109,11 @@ const Login = () => {
 
           <div className="mt-8 pt-8 border-t border-slate-50 text-center">
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-4">New to the system?</p>
-            <button onClick={() => navigate('/register')} className="inline-flex items-center gap-2 text-indigo-600 font-black text-xs uppercase hover:underline">
+            <button 
+              type="button"
+              onClick={() => navigate('/register')} 
+              className="inline-flex items-center gap-2 text-indigo-600 font-black text-xs uppercase hover:underline"
+            >
               <UserPlus size={16} /> Create Admin Account
             </button>
           </div>
