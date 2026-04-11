@@ -9,9 +9,9 @@ const Sidebar = () => {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: ShoppingCart, label: 'POS Terminal', path: '/pos' },
+    { icon: ShoppingCart, label: 'New Bill', path: '/pos' }, // Path එක /pos ලෙසම තැබුවා
     { icon: Package, label: 'Inventory', path: '/inventory' },
-    { icon: FileText, label: 'Sales Records', path: '/invoices' },
+    { icon: FileText, label: 'Invoice', path: '/invoice' }, // Path එක /invoice ලෙසම තැබුවා
     { icon: UserCircle, label: 'Account', path: '/account' },
   ];
 
