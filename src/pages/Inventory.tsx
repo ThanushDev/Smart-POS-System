@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { Plus, Search, Edit3, Trash2, Package } from 'lucide-react';
+import { Plus, Search, Edit3, Trash2, Package, Tag } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -46,7 +46,12 @@ const Inventory = () => {
               <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
               <input type="text" placeholder="Search products..." className="pl-10 pr-4 py-2 bg-white rounded-xl outline-none shadow-sm font-bold" onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            {isAdmin && <button className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-100"><Plus size={18}/> Add Item</button>}
+            {/* Add Item Button - Admin ට විතරයි */}
+            {isAdmin && (
+              <button className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-100">
+                <Plus size={18}/> Add Item
+              </button>
+            )}
           </div>
         </header>
 
@@ -66,11 +71,23 @@ const Inventory = () => {
                 </div>
               </div>
               <h3 className="font-black uppercase text-sm mb-1">{p.name}</h3>
-              <p className="text-[10px] text-slate-400 font-bold mb-4">CODE: {p.code}</p>
+              <p className="text-[10px] text-slate-400 font-bold mb-2">CODE: {p.code}</p>
+              
+              {/* Discount Badge - Admin ට පමණක් Edit කළ හැකි ලෙස පෙන්වීමට */}
+              {p.discount > 0 && (
+                <div className="flex items-center gap-1 text-emerald-600 mb-4">
+                  <Tag size={12} className="fill-emerald-600" />
+                  <span className="text-[10px] font-black uppercase">{p.discount}% OFF Applied</span>
+                </div>
+              )}
+
               <div className="flex justify-between items-end">
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase">Price</p>
-                  <p className="text-xl font-black text-indigo-600 italic">Rs. {p.price}</p>
+                  <div className="flex flex-col">
+                    {p.discount > 0 && <span className="text-[10px] text-slate-400 line-through font-bold">Rs. {p.price}</span>}
+                    <p className="text-xl font-black text-indigo-600 italic">Rs. {p.price - (p.price * p.discount / 100)}</p>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-black text-slate-400 uppercase">Stock</p>
