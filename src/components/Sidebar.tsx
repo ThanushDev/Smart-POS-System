@@ -19,14 +19,17 @@ const Sidebar = () => {
     navigate('/'); 
   };
 
+  // මූලික menu items ටික
   const menuItems = [
-    { name: 'Dashboard', path: '/Dashboard', icon: <LayoutDashboard size={22} /> },
-    // මෙන්න මෙතන මම App.tsx එකට ගැලපෙන්න වෙනස් කළා
-    { name: 'New Bill', path: '/new-bill', icon: <ShoppingCart size={22} /> }, 
-    { name: 'Inventory', path: '/Inventory', icon: <Package size={22} /> },
-    { name: 'Invoices', path: '/Invoices', icon: <FileText size={22} /> },
-    { name: 'Accounts', path: '/Accounts', icon: <Settings size={22} /> },
+    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={22} />, adminOnly: true },
+    { name: 'New Bill', path: '/new-bill', icon: <ShoppingCart size={22} />, adminOnly: false }, 
+    { name: 'Inventory', path: '/inventory', icon: <Package size={22} />, adminOnly: false },
+    { name: 'Invoices', path: '/invoices', icon: <FileText size={22} />, adminOnly: false },
+    { name: 'Accounts', path: '/accounts', icon: <Settings size={22} />, adminOnly: true },
   ];
+
+  // Role එක අනුව filter කිරීම
+  const filteredMenu = menuItems.filter(item => !item.adminOnly || user.role === 'Admin');
 
   return (
     <aside className="w-72 bg-white h-screen flex flex-col border-r border-slate-100 shadow-sm z-50 sticky top-0">
@@ -39,7 +42,7 @@ const Sidebar = () => {
       </div>
 
       <nav className="flex-1 px-6 space-y-2 overflow-y-auto">
-        {menuItems.map((item) => {
+        {filteredMenu.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <Link
