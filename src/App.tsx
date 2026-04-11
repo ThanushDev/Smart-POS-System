@@ -1,45 +1,57 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import '@radix-ui/themes/styles.css';
 import { Theme } from '@radix-ui/themes';
 import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Pages
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Dashboard from '@/pages/Dashboard';
 import NewBill from '@/pages/NewBill';
 import Inventory from '@/pages/Inventory';
 import Invoice from '@/pages/Invoice'; 
+import Report from '@/pages/Report';
 import Accounts from '@/pages/Accounts';
 import NotFound from '@/pages/NotFound';
 
 const App: React.FC = () => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  // Local storage එකෙන් user role එක ගන්නවා (Redirects සඳහා)
+  const userData = localStorage.getItem('user');
+  const user = userData ? JSON.parse(userData) : null;
 
   return (
     <Theme appearance="light" accentColor="indigo" radius="large">
       <Router>
-        <main className="min-h-screen">
+        <main className="min-h-screen font-sans selection:bg-indigo-100 selection:text-indigo-900">
           <Routes>
-            {/* Auth */}
+            {/* Auth Routes */}
             <Route path="/" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            {/* Common (දෙන්නටම පුළුවන්) */}
+            {/* Main Routes (Staff/Admin දෙන්නටම පුළුවන්) */}
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/new-bill" element={<NewBill />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/invoices" element={<Invoice />} />
+            <Route path="/report" element={<Report />} />
             
-            {/* Admin Only - Admin නොවුනොත් auto-redirect වෙන්නේ Shop (new-bill) එකටයි */}
-            <Route path="/dashboard" element={user.role === 'Admin' ? <Dashboard /> : <Navigate to="/new-bill" />} />
-            <Route path="/accounts" element={user.role === 'Admin' ? <Accounts /> : <Navigate to="/new-bill" />} />
+            {/* Admin Only Route */}
+            <Route 
+              path="/accounts" 
+              element={user?.role === 'Admin' ? <Accounts /> : <Navigate to="/dashboard" replace />} 
+            />
             
-            {/* 404 */}
+            {/* Error Handling */}
             <Route path="/404" element={<NotFound />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
           </Routes>
 
-          <ToastContainer position="bottom-right" autoClose={3000} theme="light" />
+          <ToastContainer
+            position="bottom-right"
+            autoClose={3000}
+            theme="light"
+          />
         </main>
       </Router>
     </Theme>
