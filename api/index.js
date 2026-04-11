@@ -18,65 +18,88 @@ const connectDB = async () => {
     const db = await mongoose.connect(MONGODB_URI);
     isConnected = db.connections[0].readyState === 1;
     console.log("MongoDB Connected Successfully");
-  } catch (err) { console.error("MongoDB Error:", err); }
+  } catch (err) { console.error("Database Connection Error:", err); }
 };
 
-// --- MODELS ---
-const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
+// --- SCHEMAS ---
+const userSchema = new mongoose.Schema({
   name: String, 
   email: { type: String, unique: true }, 
   password: { type: String, required: true }, 
-  role: { type: String, default: 'Admin' },
-  whatsapp: String,
+  role: { type: String, default: 'Staff' },
   businessId: String 
-}));
-
-const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, code: String, price: Number, qty: Number, discount: { type: Number, default: 0 } 
-}, { timestamps: true }));
-
-const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, items: Array, total: Number, discountTotal: { type: Number, default: 0 },
-  paymentMethod: String, cashier: String, businessId: String 
-}, { timestamps: true }));
-
-// --- API ROUTES ---
-
-// LOGIN FIX: Email හෝ Name එකෙන් දෙකෙන්ම Login විය හැකි ලෙස සකස් කර ඇත
-app.post('/api/auth/login', async (req, res) => {
-  await connectDB();
-  const { username, password } = req.body; // Frontend එකෙන් එන 'username' (Email එක විය හැක)
-  try {
-    // වැදගත්: මෙහිදී email එක username එකට සමානදැයි බලයි
-    const user = await Business.findOne({ 
-      $or: [ { email: username }, { name: username } ],
-      password: password 
-    });
-
-    if (user) {
-      res.json({ 
-        success: true, 
-        user: { 
-          _id: user._id,
-          name: user.name, 
-          role: user.role, 
-          email: user.email,
-          businessId: user.businessId || user._id 
-        } 
-      });
-    } else {
-      res.status(401).json({ success: false, message: "Invalid credentials. Please check Email/Password." });
-    }
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
-  }
 });
 
-// INVOICES & PRODUCTS (Your original logic stays same)
-app.get('/api/invoices', async (req, res) => {
+const Business = mongoose.models.Business || mongoose.model('Business', userSchema);
+
+const productSchema = new mongoose.Schema({
+  name: String, code: String, price: Number, qty: Number, discount: { type: Number, default: 0 } 
+}, { timestamps: true });
+const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
+
+const invoiceSchema = new mongoose.Schema({
+  invoiceId: String, items: Array, total: Number, discountTotal: { type: Number, default: 0 },
+  paymentMethod: String, cashier: String, businessId: String 
+}, { timestamps: true });
+const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', invoiceSchema);
+
+// --- AUTH ROUTES ---
+
+app.post('/api/auth/login', async (req, res) => {
   await connectDB();
-  const invoices = await Invoice.find().sort({ createdAt: -1 });
-  res.json(invoices);
+  const { username, password } = req.body;
+  try {
+    // නම හෝ ඊමේල් දෙකෙන්ම ලොග් විය හැක
+    const user = await Business.findOne({ 
+      $or: [{ email: username }, { name: username }], 
+      password: password 
+    });
+    if (user) {
+      res.json({ success: true, user });
+    } else {
+      res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+// --- ADMIN SECURE RESET (පස්වර්ඩ් එක අවශ්‍යයි) ---
+app.post('/api/admin/reset-all', async (req, res) => {
+  await connectDB();
+  const { adminPassword } = req.body;
+  try {
+    const admin = await Business.findOne({ role: 'Admin', password: adminPassword });
+    if (!admin) {
+      return res.status(403).json({ success: false, message: "Incorrect Admin Password! Data NOT deleted." });
+    }
+    // සියලුම දත්ත මකා දැමීම
+    await Product.deleteMany({});
+    await Invoice.deleteMany({});
+    res.json({ success: true, message: "All shop data has been reset successfully." });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+// --- USER MANAGEMENT ---
+app.get('/api/users', async (req, res) => {
+  await connectDB();
+  try {
+    const users = await Business.find(); // සියලුම users පෙන්වයි
+    res.json(users);
+  } catch (err) { res.status(500).json([]); }
+});
+
+app.post('/api/users/register', async (req, res) => {
+  await connectDB();
+  try {
+    const newUser = await Business.create(req.body);
+    res.status(201).json({ success: true, user: newUser });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+// --- PRODUCTS & INVOICES (Full Logic) ---
+app.get('/api/products', async (req, res) => {
+  await connectDB();
+  const products = await Product.find().sort({ createdAt: -1 });
+  res.json(products);
 });
 
 app.post('/api/invoices', async (req, res) => {
@@ -88,31 +111,10 @@ app.post('/api/invoices', async (req, res) => {
   res.status(201).json(newInvoice);
 });
 
-app.delete('/api/invoices/:id', async (req, res) => {
+app.get('/api/invoices', async (req, res) => {
   await connectDB();
-  await Invoice.findByIdAndDelete(req.params.id);
-  res.json({ success: true });
-});
-
-app.get('/api/products', async (req, res) => {
-  await connectDB();
-  const products = await Product.find().sort({ createdAt: -1 });
-  res.json(products);
-});
-
-app.get('/api/business', async (req, res) => {
-  await connectDB();
-  const business = await Business.findOne();
-  res.json(business || { name: "Digi Solutions" });
-});
-
-// Register Staff/User Route
-app.post('/api/users/register', async (req, res) => {
-  await connectDB();
-  try {
-    const newUser = await Business.create(req.body);
-    res.status(201).json({ success: true, user: newUser });
-  } catch (err) { res.status(500).json({ success: false }); }
+  const invoices = await Invoice.find().sort({ createdAt: -1 });
+  res.json(invoices);
 });
 
 export default app;
