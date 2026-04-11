@@ -22,18 +22,28 @@ const connectDB = async () => {
 
 // --- MODELS ---
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, email: { type: String, unique: true }, password: { type: String, required: true }, 
+  name: String, 
+  email: { type: String, unique: true }, 
+  password: { type: String, required: true }, 
   role: { type: String, default: 'Admin' },
   whatsapp: String
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, code: String, price: Number, qty: Number,
-  discount: { type: Number, default: 0 } // Inventory එකෙන් දෙන Discount එක
+  name: String, 
+  code: String, 
+  price: Number, 
+  qty: Number,
+  discount: { type: Number, default: 0 } 
 }, { timestamps: true }));
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, items: Array, total: Number, discountTotal: Number, paymentMethod: String, cashier: String
+  invoiceId: String, 
+  items: Array, 
+  total: Number, 
+  discountTotal: Number, 
+  paymentMethod: String, 
+  cashier: String
 }, { timestamps: true }));
 
 // --- ROUTES ---
