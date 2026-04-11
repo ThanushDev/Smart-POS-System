@@ -1,176 +1,61 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import * as dotenv from 'dotenv';
+import React from 'react';
+import '@radix-ui/themes/styles.css';
+import { Theme } from '@radix-ui/themes';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-dotenv.config();
-const app = express();
+import Login from '@/pages/Login';
+import Register from '@/pages/Register';
+import Dashboard from '@/pages/Dashboard';
+import NewBill from '@/pages/NewBill';
+import Inventory from '@/pages/Inventory';
+import Invoice from '@/pages/Invoice'; 
+import Report from '@/pages/Report';
+import Accounts from '@/pages/Accounts';
+import NotFound from '@/pages/NotFound';
 
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+const App: React.FC = () => {
+  // Local storage එකෙන් user role එක ගන්නවා (Redirects සඳහා)
+  const userData = localStorage.getItem('user');
+  const user = userData ? JSON.parse(userData) : null;
 
-const MONGODB_URI = process.env.MONGODB_URI;
-let isConnected = false;
+  return (
+    <Theme appearance="light" accentColor="indigo" radius="large">
+      <Router>
+        <main className="min-h-screen font-sans selection:bg-indigo-100 selection:text-indigo-900">
+          <Routes>
+            {/* Auth Routes */}
+            <Route path="/" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Main Routes (Staff/Admin දෙන්නටම පුළුවන්) */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/new-bill" element={<NewBill />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/invoices" element={<Invoice />} />
+            <Route path="/report" element={<Report />} />
+            
+            {/* Admin Only Route */}
+            <Route 
+              path="/accounts" 
+              element={user?.role === 'Admin' ? <Accounts /> : <Navigate to="/dashboard" replace />} 
+            />
+            
+            {/* Error Handling */}
+            <Route path="/404" element={<NotFound />} />
+            <Route path="*" element={<Navigate to="/404" replace />} />
+          </Routes>
 
-const connectDB = async () => {
-  if (isConnected) return;
-  try {
-    const db = await mongoose.connect(MONGODB_URI);
-    isConnected = db.connections[0].readyState === 1;
-    console.log("MongoDB Connected Successfully");
-  } catch (err) { 
-    console.error("MongoDB Connection Error:", err); 
-  }
-};
+          <ToastContainer
+            position="bottom-right"
+            autoClose={3000}
+            theme="light"
+          />
+        </main>
+      </Router>
+    </Theme>
+  );
+}
 
-// --- DATABASE MODELS ---
-const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, 
-  email: { type: String, unique: true }, 
-  password: { type: String, required: true }, 
-  role: { type: String, default: 'Admin' }, 
-  whatsapp: String, 
-  businessId: String, 
-  address: String, 
-  logo: String
-}));
-
-const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, 
-  code: String, 
-  price: Number, 
-  qty: Number, 
-  discount: { type: Number, default: 0 } 
-}, { timestamps: true }));
-
-const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, 
-  items: Array, 
-  total: Number, 
-  discountTotal: { type: Number, default: 0 },
-  paymentMethod: String, 
-  cashier: String, 
-  businessId: String 
-}, { timestamps: true }));
-
-// --- API ROUTES ---
-
-// LOGIN ROUTE (Fixed for Login Failed Issue)
-app.post('/api/auth/login', async (req, res) => {
-  await connectDB();
-  const { username, email, password } = req.body;
-  
-  // Frontend එකෙන් username හෝ email දෙකෙන් මොකක් එවුවත් loginIdentity එකට ගන්නවා
-  const loginIdentity = username || email;
-
-  try {
-    const user = await Business.findOne({ email: loginIdentity, password: password });
-    
-    if (user) {
-      res.json({ 
-        success: true, 
-        user: { 
-          _id: user._id, 
-          name: user.name, 
-          role: user.role, 
-          email: user.email, 
-          businessId: user.businessId || user._id 
-        } 
-      });
-    } else {
-      res.status(401).json({ success: false, message: "Invalid email or password" });
-    }
-  } catch (err) { 
-    res.status(500).json({ success: false, message: "Server error" }); 
-  }
-});
-
-// USER MANAGEMENT (For Accounts Page)
-app.get('/api/users', async (req, res) => {
-  await connectDB();
-  const users = await Business.find();
-  res.json(users);
-});
-
-app.post('/api/users/add', async (req, res) => {
-  await connectDB();
-  try {
-    const newUser = await Business.create(req.body);
-    res.status(201).json(newUser);
-  } catch (err) { 
-    res.status(400).json({ message: "Email already exists" }); 
-  }
-});
-
-app.put('/api/users/:id', async (req, res) => {
-  await connectDB();
-  const updated = await Business.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json(updated);
-});
-
-app.delete('/api/users/:id', async (req, res) => {
-  await connectDB();
-  await Business.findByIdAndDelete(req.params.id);
-  res.json({ success: true });
-});
-
-// PRODUCTS (Inventory)
-app.get('/api/products', async (req, res) => {
-  await connectDB();
-  const products = await Product.find().sort({ createdAt: -1 });
-  res.json(products);
-});
-
-app.post('/api/products', async (req, res) => {
-  await connectDB();
-  const newProduct = await Product.create(req.body);
-  res.status(201).json({ success: true, product: newProduct });
-});
-
-app.put('/api/products/:id', async (req, res) => {
-  await connectDB();
-  // Admin Check via headers
-  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Unauthorized" });
-  const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json({ success: true, product: updated });
-});
-
-app.delete('/api/products/:id', async (req, res) => {
-  await connectDB();
-  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Unauthorized" });
-  await Product.findByIdAndDelete(req.params.id);
-  res.json({ success: true });
-});
-
-// INVOICES
-app.get('/api/invoices', async (req, res) => {
-  await connectDB();
-  const invoices = await Invoice.find().sort({ createdAt: -1 });
-  res.json(invoices);
-});
-
-app.post('/api/invoices', async (req, res) => {
-  await connectDB();
-  const newInvoice = await Invoice.create(req.body);
-  // Stock decrement logic
-  for (const item of req.body.items) {
-    await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
-  }
-  res.status(201).json(newInvoice);
-});
-
-app.delete('/api/invoices/:id', async (req, res) => {
-  await connectDB();
-  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false });
-  await Invoice.findByIdAndDelete(req.params.id);
-  res.json({ success: true });
-});
-
-// BUSINESS PROFILE
-app.get('/api/business', async (req, res) => {
-  await connectDB();
-  const business = await Business.findOne({ role: 'Admin' });
-  res.json(business || { name: "Digi Solutions" });
-});
-
-export default app;
+export default App;
