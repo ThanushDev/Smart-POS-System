@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { Eye, Trash2, RefreshCw, Printer } from 'lucide-react'; // Printer icon එකත් ගත්තා
+import PrintableBill from '../components/PrintableBill'; // මේක හරියට import කරගන්න
+import { Printer, Trash2, RefreshCw, Eye } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
 const Invoices = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'Admin';
@@ -21,11 +23,18 @@ const Invoices = () => {
 
   useEffect(() => { fetchData(); }, []);
 
+  const handlePrint = (inv: any) => {
+    setSelectedInvoice(inv);
+    toast.info(`Printing Invoice #${inv.invoiceId}`);
+    // පොඩි වෙලාවකින් Print window එක open කරනවා data load වුණාම
+    setTimeout(() => {
+      window.print();
+      setSelectedInvoice(null);
+    }, 800);
+  };
+
   const handleDelete = async (id: string) => {
-    if (!isAdmin) {
-      toast.error("Admins only!");
-      return;
-    }
+    if (!isAdmin) return;
     if (window.confirm("Delete record?")) {
       try {
         await axios.delete(`/api/invoices/${id}`, { headers: { 'user-role': user.role } });
@@ -33,13 +42,6 @@ const Invoices = () => {
         toast.success("Record Deleted");
       } catch (err) { toast.error("Failed"); }
     }
-  };
-
-  // View/Print Function (Staff ටත් පුළුවන්)
-  const handleView = (inv: any) => {
-    // මෙතන ඔයාගේ printable bill එක පෙන්වන logic එක දාන්න
-    toast.info(`Opening Invoice #${inv.invoiceId}`);
-    // උදාහරණයක් විදිහට print modal එකක් open කරන්න පුළුවන්
   };
 
   return (
@@ -50,6 +52,7 @@ const Invoices = () => {
           <h1 className="text-3xl font-black italic uppercase">Invoice Logs</h1>
           <button onClick={fetchData} className="p-3 bg-white rounded-2xl shadow-sm text-indigo-600"><RefreshCw size={20} /></button>
         </header>
+        
         <div className="bg-white rounded-[3rem] shadow-sm flex-1 overflow-auto p-6 border border-slate-100">
           <table className="w-full text-left">
             <thead>
@@ -65,11 +68,10 @@ const Invoices = () => {
                   <td className="px-6 py-5 font-black text-slate-800">Rs. {inv.total?.toLocaleString()}</td>
                   <td className="px-6 py-5 rounded-r-3xl text-right">
                     <div className="flex justify-end gap-2">
-                      {/* View & Print Button - හැමෝටම පේනවා */}
-                      <button onClick={() => handleView(inv)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                      {/* Print Button - හැමෝටම පුළුවන් */}
+                      <button onClick={() => handlePrint(inv)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg">
                         <Printer size={16}/>
                       </button>
-                      
                       {/* Delete Button - ඇඩ්මින්ට විතරයි */}
                       {isAdmin && (
                         <button onClick={() => handleDelete(inv._id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg">
@@ -84,6 +86,19 @@ const Invoices = () => {
           </table>
         </div>
       </main>
+
+      {/* Print Area - Hidden by CSS normally */}
+      <div className="print-area hidden">
+        {selectedInvoice && <PrintableBill {...selectedInvoice} />}
+      </div>
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .print-area, .print-area * { visibility: visible; }
+          .print-area { position: absolute; left: 0; top: 0; width: 80mm; }
+        }
+      `}</style>
     </div>
   );
 };
