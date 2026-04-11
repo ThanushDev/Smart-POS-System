@@ -1,85 +1,59 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 
-const PrintableBill = React.forwardRef<HTMLDivElement, any>((props, ref) => {
-  const { invoiceId, cart, total, paymentMethod, currentUser, businessInfo, date, time } = props;
-
-  // මුළු වට්ටම ගණනය කිරීම (Item discount x Quantity)
-  const totalDiscount = cart.reduce((sum: number, item: any) => sum + ((item.discount || 0) * item.quantity), 0);
-  const subTotal = total + totalDiscount;
-
-  if (!businessInfo) return null;
-
+const PrintableBill = forwardRef(({ invoiceId, cart, total, discountTotal, businessInfo, currentUser, date, time }: any, ref: any) => {
   return (
-    <div ref={ref} className="print:block hidden p-4 w-[80mm] font-mono text-[11px] bg-white text-black">
-      <style>{`
-        @media print {
-          @page { size: 80mm auto; margin: 0; }
-          body { padding: 3mm; background: white; }
-        }
-      `}</style>
-
+    <div ref={ref} className="p-4 bg-white text-black font-mono text-[12px] w-[80mm]">
       {/* Header */}
-      <div className="text-center border-b-2 border-dashed pb-2 mb-2">
-        <h2 className="text-sm font-black uppercase tracking-tighter">{businessInfo.name}</h2>
-        <p className="text-[9px]">{businessInfo.address || 'Colombo, Sri Lanka'}</p>
-        <p className="text-[10px] font-bold">WhatsApp: {businessInfo.whatsapp}</p>
-        <div className="mt-2 border-t border-black pt-1">
-          <p className="font-black uppercase">Tax Invoice: #{invoiceId}</p>
-          <p className="text-[8px]">{date} | {time}</p>
-        </div>
+      <div className="text-center border-b border-dashed border-black pb-2 mb-2">
+        <h2 className="text-lg font-black uppercase tracking-tighter">{businessInfo?.name || 'Digi Solutions'}</h2>
+        <p className="text-[10px]">WhatsApp: {businessInfo?.whatsapp || 'N/A'}</p>
+        <p className="text-[9px] mt-1">{date} | {time}</p>
       </div>
 
-      {/* Items Table */}
-      <table className="w-full mb-2">
+      {/* Info */}
+      <div className="mb-2 text-[10px] space-y-0.5">
+        <p>INVOICE: #{invoiceId}</p>
+        <p>CASHIER: {currentUser?.name || 'Admin'}</p>
+      </div>
+
+      {/* Table */}
+      <table className="w-full mb-2 border-b border-dashed border-black">
         <thead className="border-b border-black">
-          <tr className="text-left text-[10px]">
-            <th className="py-1">DESCRIPTION</th>
-            <th className="text-center">QTY</th>
-            <th className="text-right">PRICE</th>
+          <tr className="text-[10px]">
+            <th className="text-left py-1">ITEM</th>
+            <th className="text-right py-1">QTY</th>
+            <th className="text-right py-1">UNIT</th>
+            <th className="text-right py-1">SUB</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-dashed divide-slate-200">
           {cart.map((item: any, i: number) => (
-            <tr key={i}>
-              <td className="py-1 uppercase">{item.name}</td>
-              <td className="text-center">{item.quantity}</td>
-              <td className="text-right">{(item.price * item.quantity).toLocaleString()}</td>
+            <tr key={i} className="text-[10px]">
+              <td className="py-2 uppercase leading-tight">{item.name}</td>
+              <td className="text-right">{item.quantity}</td>
+              <td className="text-right">{item.price.toFixed(2)}</td>
+              <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {/* Totals Section */}
-      <div className="border-t-2 border-dashed pt-2 space-y-1">
-        <div className="flex justify-between">
-          <span>GROSS TOTAL</span>
-          <span>{subTotal.toLocaleString()}</span>
-        </div>
-        
-        {totalDiscount > 0 && (
-          <div className="flex justify-between italic text-gray-700">
-            <span>TOTAL DISCOUNT (-)</span>
-            <span>{totalDiscount.toLocaleString()}</span>
-          </div>
+      {/* Totals */}
+      <div className="space-y-1 text-right">
+        {discountTotal > 0 && (
+          <p className="text-[10px] font-bold">DISCOUNT: - Rs. {Number(discountTotal).toFixed(2)}</p>
         )}
-
-        <div className="flex justify-between font-black text-[14px] border-t border-black pt-1">
-          <span>NET AMOUNT</span>
-          <span>Rs. {total.toLocaleString()}</span>
+        <div className="border-t border-black pt-1">
+          <p className="text-sm font-black uppercase">NET TOTAL: Rs. {Number(total).toFixed(2)}</p>
         </div>
       </div>
 
-      {/* Footer Info */}
-      <div className="mt-4 text-[9px] uppercase border-t border-dotted pt-2">
-        <p className="flex justify-between"><span>Payment Method:</span> <b>{paymentMethod}</b></p>
-        <p className="flex justify-between"><span>Cashier:</span> <b>{currentUser?.name || 'Admin'}</b></p>
-      </div>
-
-      {/* Thank You Note */}
-      <div className="text-center mt-6 border-t-2 border-dashed pt-2">
-        <p className="font-black italic tracking-widest uppercase">--- THANK YOU ---</p>
-        <p className="text-[8px] mt-1 italic">Please visit us again!</p>
-        <p className="text-[7px] mt-4 opacity-50 uppercase tracking-tighter">Software by Digi Solutions Support</p>
+      {/* Footer */}
+      <div className="text-center mt-6 pt-2 border-t border-dashed border-black">
+        <p className="uppercase font-black text-[11px] italic">Thank You Come Again!</p>
+        <p className="text-[8px] mt-2 opacity-70 italic text-slate-500">
+          System by Digi Solutions
+        </p>
       </div>
     </div>
   );
