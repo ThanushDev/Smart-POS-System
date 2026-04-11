@@ -46,7 +46,7 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Products: Get & Post
+// Products: GET, POST, PUT, DELETE
 app.get('/api/products', async (req, res) => {
   await connectDB();
   const products = await Product.find().sort({ createdAt: -1 });
@@ -59,16 +59,14 @@ app.post('/api/products', async (req, res) => {
   res.status(201).json({ success: true, product: newProduct });
 });
 
-// Products: Update (PUT) - මෙය අලුතින් එක් කරන ලදී
 app.put('/api/products/:id', async (req, res) => {
   await connectDB();
   try {
-    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json({ success: true, product: updatedProduct });
+    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, product: updated });
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Products: Delete
 app.delete('/api/products/:id', async (req, res) => {
   await connectDB();
   try {
@@ -77,7 +75,7 @@ app.delete('/api/products/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Invoices: Get & Post
+// Invoices: GET, POST, DELETE
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   const invoices = await Invoice.find().sort({ createdAt: -1 });
@@ -95,7 +93,6 @@ app.post('/api/invoices', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Invoices: Delete
 app.delete('/api/invoices/:id', async (req, res) => {
   await connectDB();
   try {
@@ -104,7 +101,16 @@ app.delete('/api/invoices/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Stats
+// Business Profile
+app.get('/api/business', async (req, res) => {
+  await connectDB();
+  try {
+    const business = await Business.findOne();
+    res.json(business || { name: "Digi Solutions" });
+  } catch (error) { res.json({ name: "Digi Solutions" }); }
+});
+
+// Dashboard Stats
 app.get('/api/dashboard/stats', async (req, res) => {
   await connectDB();
   try {
