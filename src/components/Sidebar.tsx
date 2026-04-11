@@ -21,12 +21,12 @@ const Sidebar = () => {
 
   // මූලික menu items ටික
   const menuItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={22} />, adminOnly: true },
-    { name: 'New Bill', path: '/new-bill', icon: <ShoppingCart size={22} />, adminOnly: false }, 
-    { name: 'Inventory', path: '/inventory', icon: <Package size={22} />, adminOnly: false },
-    { name: 'Invoices', path: '/invoices', icon: <FileText size={22} />, adminOnly: false },
-    { name: 'Accounts', path: '/accounts', icon: <Settings size={22} />, adminOnly: true },
-  ];
+  { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={22} />, adminOnly: false }, 
+  { name: 'New Bill', path: '/new-bill', icon: <ShoppingCart size={22} />, adminOnly: false }, 
+  { name: 'Inventory', path: '/inventory', icon: <Package size={22} />, adminOnly: false },
+  { name: 'Invoices', path: '/invoices', icon: <FileText size={22} />, adminOnly: false },
+  { name: 'Accounts', path: '/accounts', icon: <Settings size={22} />, adminOnly: true },
+];
 
   // Role එක අනුව filter කිරීම
   const filteredMenu = menuItems.filter(item => !item.adminOnly || user.role === 'Admin');
