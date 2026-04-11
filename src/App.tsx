@@ -16,7 +16,6 @@ import Accounts from '@/pages/Accounts';
 import NotFound from '@/pages/NotFound';
 
 const App: React.FC = () => {
-  // Local storage එකෙන් user role එක ගන්නවා (Redirects සඳහා)
   const userData = localStorage.getItem('user');
   const user = userData ? JSON.parse(userData) : null;
 
@@ -25,33 +24,27 @@ const App: React.FC = () => {
       <Router>
         <main className="min-h-screen font-sans selection:bg-indigo-100 selection:text-indigo-900">
           <Routes>
-            {/* Auth Routes */}
             <Route path="/" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            {/* Main Routes (Staff/Admin දෙන්නටම පුළුවන්) */}
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/new-bill" element={<NewBill />} />
+            
+            {/* Sidebar එකේ තියෙන පරණ Paths වලට මෙතන Names Fix කළා */}
+            <Route path="/pos" element={<NewBill />} /> 
             <Route path="/inventory" element={<Inventory />} />
-            <Route path="/invoices" element={<Invoice />} />
+            <Route path="/invoice" element={<Invoice />} />
             <Route path="/report" element={<Report />} />
             
-            {/* Admin Only Route */}
             <Route 
-              path="/accounts" 
+              path="/account" 
               element={user?.role === 'Admin' ? <Accounts /> : <Navigate to="/dashboard" replace />} 
             />
             
-            {/* Error Handling */}
             <Route path="/404" element={<NotFound />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
           </Routes>
 
-          <ToastContainer
-            position="bottom-right"
-            autoClose={3000}
-            theme="light"
-          />
+          <ToastContainer position="bottom-right" autoClose={3000} theme="light" />
         </main>
       </Router>
     </Theme>
