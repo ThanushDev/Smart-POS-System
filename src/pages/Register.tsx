@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Store, ArrowRight, Info, Image as ImageIcon, Loader2, Mail, Lock, Phone } from 'lucide-react';
+import { Store, ArrowRight, Image as ImageIcon, Loader2, Mail, Lock, Phone, MapPin } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 
@@ -31,9 +31,10 @@ const Register = () => {
 
     const formData = new FormData(e.target as HTMLFormElement);
     
-    // API එකට යවන JSON object එක
+    // API එකට යවන JSON object එක (Address එක ඇතුළත් කර ඇත)
     const registrationData = {
       businessName: formData.get('businessName'),
+      address: formData.get('address'), // අලුතින් එකතු කළ ලිපිනය
       whatsapp: formData.get('whatsapp'),
       email: formData.get('email'),
       password: formData.get('password'),
@@ -47,13 +48,12 @@ const Register = () => {
       
       if (res.data.success) {
         toast.success("Account Created Successfully!");
-        // සාර්ථක නම් විනාඩි 2කින් පසු Login වෙත යොමු කරයි
+        // සාර්ථක නම් තත්පර 2කින් පසු Login වෙත යොමු කරයි
         setTimeout(() => navigate('/'), 2000);
       } else {
         toast.error(res.data.message || "Registration failed");
       }
     } catch (err: any) {
-      // Server එකෙන් එන නියම Error එක පෙන්වීම
       const errorMsg = err.response?.data?.message || "Connection error. Please try again.";
       toast.error(errorMsg);
       console.error("Registration Error Details:", err.response?.data);
@@ -70,8 +70,8 @@ const Register = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500 rounded-full blur-[120px]"></div>
       </div>
 
-      <div className="w-full max-w-xl bg-white rounded-[3rem] shadow-2xl relative z-10 overflow-hidden flex flex-col md:flex-row">
-        <div className="flex-1 p-8 md:p-12">
+      <div className="w-full max-w-xl bg-white rounded-[3rem] shadow-2xl relative z-10 overflow-hidden">
+        <div className="p-8 md:p-12">
           <header className="mb-10 text-center md:text-left">
             <div className="w-16 h-16 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center text-white mb-6 shadow-xl shadow-indigo-100 mx-auto md:mx-0">
               <Store size={32} />
@@ -100,6 +100,7 @@ const Register = () => {
               </div>
             </div>
 
+            {/* Business Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
                 <Store className="absolute left-4 top-4 text-slate-300" size={18} />
@@ -109,6 +110,12 @@ const Register = () => {
                 <Phone className="absolute left-4 top-4 text-slate-300" size={18} />
                 <input name="whatsapp" type="text" required placeholder="WhatsApp No" className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold transition-all" />
               </div>
+            </div>
+
+            {/* අලුතින් එකතු කළ Address Field එක */}
+            <div className="relative">
+              <MapPin className="absolute left-4 top-4 text-slate-300" size={18} />
+              <input name="address" type="text" required placeholder="Business Address (City/Street)" className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold transition-all" />
             </div>
 
             <div className="relative">
