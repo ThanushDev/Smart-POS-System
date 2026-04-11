@@ -35,18 +35,6 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 
 // --- ROUTES ---
 
-// Login
-app.post('/api/auth/login', async (req, res) => {
-  await connectDB();
-  try {
-    const { username, password } = req.body;
-    const user = await Business.findOne({ email: username, password: password });
-    if (user) res.json({ success: true, user: { name: user.name, role: user.role, email: user.email } });
-    else res.status(401).json({ success: false, message: "Invalid credentials" });
-  } catch (error) { res.status(500).json({ success: false }); }
-});
-
-// Products: GET, POST, PUT, DELETE
 app.get('/api/products', async (req, res) => {
   await connectDB();
   const products = await Product.find().sort({ createdAt: -1 });
@@ -75,7 +63,6 @@ app.delete('/api/products/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Invoices: GET, POST, DELETE
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   const invoices = await Invoice.find().sort({ createdAt: -1 });
@@ -101,33 +88,12 @@ app.delete('/api/invoices/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Business Profile
 app.get('/api/business', async (req, res) => {
   await connectDB();
   try {
     const business = await Business.findOne();
     res.json(business || { name: "Digi Solutions" });
   } catch (error) { res.json({ name: "Digi Solutions" }); }
-});
-
-// Dashboard Stats
-app.get('/api/dashboard/stats', async (req, res) => {
-  await connectDB();
-  try {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const [invoices, products] = await Promise.all([
-      Invoice.find({ createdAt: { $gte: new Date(now.getFullYear(), now.getMonth(), 1) } }),
-      Product.find()
-    ]);
-    const todayInvoices = invoices.filter(inv => new Date(inv.createdAt) >= startOfToday);
-    res.json({
-      todayIncome: todayInvoices.reduce((sum, inv) => sum + inv.total, 0),
-      todayBills: todayInvoices.length,
-      lowStockCount: products.filter(p => p.qty <= 5).length,
-      totalProducts: products.length
-    });
-  } catch (error) { res.status(500).json({ success: false }); }
 });
 
 export default app;
