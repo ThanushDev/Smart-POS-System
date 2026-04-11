@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { LogIn, User, Lock, Terminal, UserPlus, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { LogIn, User, Lock, Terminal, UserPlus, Loader2, ShieldCheck, ArrowRightLeft } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'User' | 'Admin'>('User'); // මුලින්ම User පෙන්වයි
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,21 +19,22 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Backend එකට දත්ත යැවීම
       const res = await axios.post('/api/auth/login', formData);
       
       if (res.data.success) {
         const user = res.data.user;
         
-        // පරණ දත්ත clear කර අලුත් 'user' දත්ත ඇතුළත් කිරීම
-        // Sidebar එකේ දත්ත පෙන්වීමට මෙම 'user' කියන key එකම භාවිතා කළ යුතුයි
+        // Role එක check කිරීම (Admin mode එකේදී අනිවාර්යයෙන් Admin වෙන්න ඕනේ)
+        if (activeTab === 'Admin' && user.role !== 'Admin') {
+          toast.error("Access Denied: You are not an Admin!");
+          setIsLoading(false);
+          return;
+        }
+
         localStorage.clear();
         localStorage.setItem('user', JSON.stringify(user));
-        
-        toast.success(`Welcome back, ${user.name}!`);
+        toast.success(`Welcome, ${user.name}!`);
 
-        // Navigation logic
-        // ඔයාගේ Routes වල Dashboard එක පටන් ගන්නේ Capital 'D' අකුරෙන් නම් එය එලෙසම තිබිය යුතුයි
         if (user.role === 'Admin') {
           navigate('/Dashboard');
         } else {
@@ -40,8 +42,7 @@ const Login = () => {
         }
       }
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || "Login failed. Check your credentials.";
-      toast.error(errorMsg);
+      toast.error(err.response?.data?.message || "Login failed.");
     } finally {
       setIsLoading(false);
     }
@@ -56,67 +57,62 @@ const Login = () => {
       </div>
 
       <div className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl relative z-10 overflow-hidden">
-        <div className="p-10 md:p-12">
-          <header className="mb-10 text-center">
-            <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white mb-6 shadow-xl shadow-indigo-100 mx-auto rotate-3">
-              <Terminal size={40} />
-            </div>
-            <h1 className="text-4xl font-black italic uppercase tracking-tighter text-slate-800 leading-none">
-              Digi <span className="text-indigo-600">POS</span>
+        {/* Toggle Bar */}
+        <div className="flex bg-slate-100 p-2 m-6 rounded-2xl">
+          <button 
+            onClick={() => setActiveTab('User')}
+            className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'User' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
+          >
+            <User size={16} /> Staff Login
+          </button>
+          <button 
+            onClick={() => setActiveTab('Admin')}
+            className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'Admin' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-400'}`}
+          >
+            <ShieldCheck size={16} /> Admin Login
+          </button>
+        </div>
+
+        <div className="px-10 pb-12">
+          <header className="mb-8 text-center">
+            <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-800">
+              {activeTab === 'Admin' ? 'Admin' : 'Staff'} <span className={activeTab === 'Admin' ? 'text-rose-600' : 'text-indigo-600'}>Portal</span>
             </h1>
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-3 italic">Advanced Business Engine</p>
+            <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mt-2 italic">Digi Solutions Engine</p>
           </header>
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="relative group">
               <User className="absolute left-5 top-5 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={20} />
-              <input 
-                name="username"
-                type="text" 
-                required 
-                value={formData.username}
-                onChange={handleInputChange}
-                className="w-full pl-14 pr-6 py-5 rounded-2xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold transition-all placeholder:text-slate-300"
-                placeholder="Username or Email"
+              <input name="username" type="text" required value={formData.username} onChange={handleInputChange}
+                className="w-full pl-14 pr-6 py-5 rounded-2xl bg-slate-50 border-none outline-none font-bold placeholder:text-slate-300"
+                placeholder="Email Address"
               />
             </div>
 
             <div className="relative group">
               <Lock className="absolute left-5 top-5 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={20} />
-              <input 
-                name="password"
-                type="password" 
-                required 
-                value={formData.password}
-                onChange={handleInputChange}
-                className="w-full pl-14 pr-6 py-5 rounded-2xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold transition-all placeholder:text-slate-300"
+              <input name="password" type="password" required value={formData.password} onChange={handleInputChange}
+                className="w-full pl-14 pr-6 py-5 rounded-2xl bg-slate-50 border-none outline-none font-bold placeholder:text-slate-300"
                 placeholder="••••••••"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-sm tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+            <button type="submit" disabled={isLoading}
+              className={`w-full py-5 text-white rounded-2xl font-black uppercase text-sm tracking-widest shadow-xl transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 ${activeTab === 'Admin' ? 'bg-rose-600 shadow-rose-100 hover:bg-rose-700' : 'bg-indigo-600 shadow-indigo-100 hover:bg-indigo-700'}`}
             >
-              {isLoading ? (
-                <Loader2 className="animate-spin" size={24} />
-              ) : (
-                <><LogIn size={20} /> Sign In</>
-              )}
+              {isLoading ? <Loader2 className="animate-spin" size={24} /> : <><LogIn size={20} /> Sign In</>}
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-slate-50 text-center">
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-4">New to the system?</p>
-            <button 
-              type="button"
-              onClick={() => navigate('/register')} 
-              className="inline-flex items-center gap-2 text-indigo-600 font-black text-xs uppercase hover:underline"
-            >
-              <UserPlus size={16} /> Create Admin Account
-            </button>
-          </div>
+          {/* Admin Mode එකේ විතරක් Signup එක පෙන්වමු */}
+          {activeTab === 'Admin' && (
+            <div className="mt-8 pt-6 border-t border-slate-50 text-center">
+              <button onClick={() => navigate('/register')} className="inline-flex items-center gap-2 text-rose-600 font-black text-xs uppercase hover:underline">
+                <UserPlus size={16} /> Create Business Account
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
