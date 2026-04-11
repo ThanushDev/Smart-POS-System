@@ -20,15 +20,10 @@ const Inventory = () => {
   useEffect(() => { fetchProducts(); }, []);
 
   const handleDelete = async (id: string) => {
-    if (!isAdmin) {
-      toast.error("Only Admins can delete items!");
-      return;
-    }
+    if (!isAdmin) return;
     if (window.confirm("Are you sure?")) {
       try {
-        await axios.delete(`/api/products/${id}`, {
-          headers: { 'user-role': user.role }
-        });
+        await axios.delete(`/api/products/${id}`, { headers: { 'user-role': user.role } });
         toast.success("Product removed");
         fetchProducts();
       } catch (err) { toast.error("Delete failed"); }
@@ -49,7 +44,7 @@ const Inventory = () => {
           <div className="flex gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
-              <input type="text" placeholder="Search products..." className="pl-10 pr-4 py-2 bg-white rounded-xl border-none outline-none shadow-sm font-bold" onChange={(e) => setSearchTerm(e.target.value)} />
+              <input type="text" placeholder="Search products..." className="pl-10 pr-4 py-2 bg-white rounded-xl outline-none shadow-sm font-bold" onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             {isAdmin && <button className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-100"><Plus size={18}/> Add Item</button>}
           </div>
@@ -61,9 +56,12 @@ const Inventory = () => {
               <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600"><Package size={24} /></div>
                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                  <button className="p-2 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit3 size={16}/></button>
+                  {/* Edit & Delete Buttons - Admin ට විතරයි පේන්නේ */}
                   {isAdmin && (
-                    <button onClick={() => handleDelete(p._id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 size={16}/></button>
+                    <>
+                      <button className="p-2 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit3 size={16}/></button>
+                      <button onClick={() => handleDelete(p._id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 size={16}/></button>
+                    </>
                   )}
                 </div>
               </div>
