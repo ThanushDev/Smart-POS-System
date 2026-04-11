@@ -33,7 +33,7 @@ const Business = mongoose.models.Business || mongoose.model('Business', new mong
   password: { type: String, required: true }, 
   role: { type: String, default: 'Admin' },
   whatsapp: String,
-  businessId: String // මෙහි දත්ත ගබඩා කිරීම සඳහා
+  businessId: String 
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
@@ -51,28 +51,28 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
   discountTotal: { type: Number, default: 0 },
   paymentMethod: String, 
   cashier: String,
-  businessId: String // කුමන ව්‍යාපාරයට අදාළදැයි හඳුනා ගැනීමට
+  businessId: String 
 }, { timestamps: true }));
 
 
 // --- API ROUTES ---
 
-// 1. AUTHENTICATION (Login Fix)
+// 1. AUTHENTICATION (Login Fix - Roles properly sent)
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   const { username, password } = req.body;
   try {
     const user = await Business.findOne({ email: username, password: password });
     if (user) {
-      // FIX: _id එක සහ email එක user object එකට එකතු කිරීම
+      // FIX: role සහ businessId හරියටම යැවීම
       res.json({ 
         success: true, 
         user: { 
-          _id: user._id, // මෙය අනිවාර්යයි
+          _id: user._id,
           name: user.name, 
           role: user.role, 
           email: user.email,
-          businessId: user.businessId || user._id // Session error එක නැති කිරීමට
+          businessId: user.businessId || user._id 
         } 
       });
     } else {
@@ -83,7 +83,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2. PRODUCTS
+// 2. PRODUCTS (Full CRUD retained)
 app.get('/api/products', async (req, res) => {
   await connectDB();
   try {
@@ -124,7 +124,7 @@ app.delete('/api/products/:id', async (req, res) => {
   }
 });
 
-// 3. INVOICES (Delete Route එක එකතු කර ඇත)
+// 3. INVOICES (Safe mapping logic retained)
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   try {
@@ -149,6 +149,7 @@ app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const newInvoice = await Invoice.create(req.body);
+    // Stock reduction logic retained
     for (const item of req.body.items) {
       await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
     }
@@ -158,7 +159,6 @@ app.post('/api/invoices', async (req, res) => {
   }
 });
 
-// CRITICAL FIX: Delete Invoice Route
 app.delete('/api/invoices/:id', async (req, res) => {
   await connectDB();
   try {
@@ -173,7 +173,7 @@ app.delete('/api/invoices/:id', async (req, res) => {
   }
 });
 
-// 4. BUSINESS SETTINGS
+// 4. BUSINESS SETTINGS (Full Logic retained)
 app.get('/api/business', async (req, res) => {
   await connectDB();
   try {
@@ -194,7 +194,7 @@ app.put('/api/business/update', async (req, res) => {
   }
 });
 
-// USER MANAGEMENT (Staff Register)
+// 5. USER MANAGEMENT (Full Logic retained)
 app.post('/api/users/register', async (req, res) => {
   await connectDB();
   try {
