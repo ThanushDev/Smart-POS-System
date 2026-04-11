@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { Search, Eye, Trash2, RefreshCw } from 'lucide-react';
+import { Eye, Trash2, RefreshCw, Printer } from 'lucide-react'; // Printer icon එකත් ගත්තා
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -22,7 +22,10 @@ const Invoices = () => {
   useEffect(() => { fetchData(); }, []);
 
   const handleDelete = async (id: string) => {
-    if (!isAdmin) return;
+    if (!isAdmin) {
+      toast.error("Admins only!");
+      return;
+    }
     if (window.confirm("Delete record?")) {
       try {
         await axios.delete(`/api/invoices/${id}`, { headers: { 'user-role': user.role } });
@@ -30,6 +33,13 @@ const Invoices = () => {
         toast.success("Record Deleted");
       } catch (err) { toast.error("Failed"); }
     }
+  };
+
+  // View/Print Function (Staff ටත් පුළුවන්)
+  const handleView = (inv: any) => {
+    // මෙතන ඔයාගේ printable bill එක පෙන්වන logic එක දාන්න
+    toast.info(`Opening Invoice #${inv.invoiceId}`);
+    // උදාහරණයක් විදිහට print modal එකක් open කරන්න පුළුවන්
   };
 
   return (
@@ -55,8 +65,17 @@ const Invoices = () => {
                   <td className="px-6 py-5 font-black text-slate-800">Rs. {inv.total?.toLocaleString()}</td>
                   <td className="px-6 py-5 rounded-r-3xl text-right">
                     <div className="flex justify-end gap-2">
-                      <button className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Eye size={16}/></button>
-                      {isAdmin && <button onClick={() => handleDelete(inv._id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 size={16}/></button>}
+                      {/* View & Print Button - හැමෝටම පේනවා */}
+                      <button onClick={() => handleView(inv)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                        <Printer size={16}/>
+                      </button>
+                      
+                      {/* Delete Button - ඇඩ්මින්ට විතරයි */}
+                      {isAdmin && (
+                        <button onClick={() => handleDelete(inv._id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg">
+                          <Trash2 size={16}/>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
