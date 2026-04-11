@@ -1,61 +1,86 @@
-import React from 'react';
-import '@radix-ui/themes/styles.css';
-import { Theme } from '@radix-ui/themes';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import * as dotenv from 'dotenv';
 
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import Dashboard from '@/pages/Dashboard';
-import NewBill from '@/pages/NewBill';
-import Inventory from '@/pages/Inventory';
-import Invoice from '@/pages/Invoice'; 
-import Report from '@/pages/Report';
-import Accounts from '@/pages/Accounts';
-import NotFound from '@/pages/NotFound';
+dotenv.config();
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
 
-const App: React.FC = () => {
-  // Local storage එකෙන් user role එක ගන්නවා (Redirects සඳහා)
-  const userData = localStorage.getItem('user');
-  const user = userData ? JSON.parse(userData) : null;
+const MONGODB_URI = process.env.MONGODB_URI;
+let isConnected = false;
 
-  return (
-    <Theme appearance="light" accentColor="indigo" radius="large">
-      <Router>
-        <main className="min-h-screen font-sans selection:bg-indigo-100 selection:text-indigo-900">
-          <Routes>
-            {/* Auth Routes */}
-            <Route path="/" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            {/* Main Routes (Staff/Admin දෙන්නටම පුළුවන්) */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/new-bill" element={<NewBill />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/invoices" element={<Invoice />} />
-            <Route path="/report" element={<Report />} />
-            
-            {/* Admin Only Route */}
-            <Route 
-              path="/accounts" 
-              element={user?.role === 'Admin' ? <Accounts /> : <Navigate to="/dashboard" replace />} 
-            />
-            
-            {/* Error Handling */}
-            <Route path="/404" element={<NotFound />} />
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </Routes>
+const connectDB = async () => {
+  if (isConnected) return;
+  try {
+    const db = await mongoose.connect(MONGODB_URI);
+    isConnected = db.connections[0].readyState === 1;
+    console.log("MongoDB Connected Successfully");
+  } catch (err) { console.error("MongoDB Connection Error:", err); }
+};
 
-          <ToastContainer
-            position="bottom-right"
-            autoClose={3000}
-            theme="light"
-          />
-        </main>
-      </Router>
-    </Theme>
-  );
-}
+// --- MODELS ---
+const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
+  name: String, email: { type: String, unique: true }, password: { type: String, required: true }, 
+  role: { type: String, default: 'Admin' }, businessId: String
+}));
 
-export default App;
+const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
+  name: String, code: String, price: Number, qty: Number, discount: { type: Number, default: 0 } 
+}, { timestamps: true }));
+
+const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
+  invoiceId: String, items: Array, total: Number, cashier: String, businessId: String 
+}, { timestamps: true }));
+
+// --- ROUTES ---
+
+// Fixes 404 on Dashboard
+app.get('/api/dashboard/stats', async (req, res) => {
+  await connectDB();
+  try {
+    const productCount = await Product.countDocuments();
+    const invoiceData = await Invoice.find();
+    const totalSales = invoiceData.reduce((sum, inv) => sum + (inv.total || 0), 0);
+    res.json({ totalProducts: productCount, totalSales: totalSales, totalInvoices: invoiceData.length, recentActivity: invoiceData.slice(-5).reverse() });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  await connectDB();
+  const { username, password } = req.body; // Login.tsx එකෙන් එවන්නේ username කියලා
+  try {
+    const user = await Business.findOne({ email: username, password: password });
+    if (user) {
+      res.json({ success: true, user: { _id: user._id, name: user.name, role: user.role, email: user.email, businessId: user.businessId || user._id } });
+    } else {
+      res.status(401).json({ success: false, message: "Invalid Credentials" });
+    }
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+// User Management
+app.get('/api/users', async (req, res) => {
+  await connectDB();
+  res.json(await Business.find());
+});
+
+app.post('/api/users/add', async (req, res) => {
+  await connectDB();
+  try { const newUser = await Business.create(req.body); res.status(201).json(newUser); } 
+  catch (err) { res.status(400).json({ message: "Exists" }); }
+});
+
+// Products & Invoices (Keep your existing simple routes)
+app.get('/api/products', async (req, res) => { await connectDB(); res.json(await Product.find().sort({ createdAt: -1 })); });
+app.post('/api/products', async (req, res) => { await connectDB(); const p = await Product.create(req.body); res.status(201).json({ success: true, product: p }); });
+app.get('/api/invoices', async (req, res) => { await connectDB(); res.json(await Invoice.find().sort({ createdAt: -1 })); });
+app.post('/api/invoices', async (req, res) => {
+  await connectDB();
+  const inv = await Invoice.create(req.body);
+  for (const item of req.body.items) { await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } }); }
+  res.status(201).json(inv);
+});
+
+export default app;
