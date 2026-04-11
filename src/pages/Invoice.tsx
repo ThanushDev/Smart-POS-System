@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import PrintableBill from '../components/PrintableBill'; // මේක හරියට import කරගන්න
-import { Printer, Trash2, RefreshCw, Eye } from 'lucide-react';
+import PrintableBill from '../components/PrintableBill'; 
+import { Printer, Trash2, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -26,7 +26,6 @@ const Invoices = () => {
   const handlePrint = (inv: any) => {
     setSelectedInvoice(inv);
     toast.info(`Printing Invoice #${inv.invoiceId}`);
-    // පොඩි වෙලාවකින් Print window එක open කරනවා data load වුණාම
     setTimeout(() => {
       window.print();
       setSelectedInvoice(null);
@@ -57,7 +56,7 @@ const Invoices = () => {
           <table className="w-full text-left">
             <thead>
               <tr className="text-slate-400 uppercase text-[10px] font-black tracking-widest">
-                <th className="px-6 py-2">ID</th><th className="px-6 py-2">Cashier</th><th className="px-6 py-2">Total</th><th className="px-6 py-2 text-right">Options</th>
+                <th className="px-6 py-2">ID</th><th className="px-6 py-2">Cashier</th><th className="px-6 py-2">Total</th><th className="px-6 py-2">Discount</th><th className="px-6 py-2 text-right">Options</th>
               </tr>
             </thead>
             <tbody>
@@ -66,18 +65,11 @@ const Invoices = () => {
                   <td className="px-6 py-5 rounded-l-3xl font-black text-indigo-600 italic">#{inv.invoiceId}</td>
                   <td className="px-6 py-5 text-xs font-black uppercase">{inv.cashier}</td>
                   <td className="px-6 py-5 font-black text-slate-800">Rs. {inv.total?.toLocaleString()}</td>
+                  <td className="px-6 py-5 font-black text-rose-500">Rs. {inv.discountTotal || 0}</td>
                   <td className="px-6 py-5 rounded-r-3xl text-right">
                     <div className="flex justify-end gap-2">
-                      {/* Print Button - හැමෝටම පුළුවන් */}
-                      <button onClick={() => handlePrint(inv)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg">
-                        <Printer size={16}/>
-                      </button>
-                      {/* Delete Button - ඇඩ්මින්ට විතරයි */}
-                      {isAdmin && (
-                        <button onClick={() => handleDelete(inv._id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg">
-                          <Trash2 size={16}/>
-                        </button>
-                      )}
+                      <button onClick={() => handlePrint(inv)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Printer size={16}/></button>
+                      {isAdmin && <button onClick={() => handleDelete(inv._id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 size={16}/></button>}
                     </div>
                   </td>
                 </tr>
@@ -87,7 +79,7 @@ const Invoices = () => {
         </div>
       </main>
 
-      {/* Print Area - Hidden by CSS normally */}
+      {/* Printable Area */}
       <div className="print-area hidden">
         {selectedInvoice && <PrintableBill {...selectedInvoice} />}
       </div>
