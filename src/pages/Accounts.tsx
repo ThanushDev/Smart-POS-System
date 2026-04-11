@@ -22,15 +22,20 @@ const Accounts = () => {
   });
 
   useEffect(() => {
-    // FIX: Checking multiple keys to ensure session is captured
-    const storedData = localStorage.getItem('user') || localStorage.getItem('currentUser') || localStorage.getItem('authUser');
-    if (storedData) {
-      try {
-        const parsedUser = JSON.parse(storedData);
-        setCurrentUser(parsedUser);
-      } catch (e) {
-        console.error("Session parse error");
+    // FIX: Automatically detecting any saved session key
+    const keys = ['user', 'currentUser', 'authUser', 'profile'];
+    let foundData = null;
+    
+    for (const key of keys) {
+      const data = localStorage.getItem(key);
+      if (data) {
+        foundData = JSON.parse(data);
+        break;
       }
+    }
+
+    if (foundData) {
+      setCurrentUser(foundData);
     }
     fetchUsers();
   }, []);
@@ -40,7 +45,7 @@ const Accounts = () => {
       const res = await axios.get('/api/users');
       setUsers(res.data);
     } catch (err) {
-      console.error("Failed to load users");
+      console.error("User fetching failed");
     }
   };
 
@@ -48,33 +53,34 @@ const Accounts = () => {
     e.preventDefault();
     setLoading(true);
 
-    // FIX: Retrieve Business ID dynamically
-    const businessId = currentUser?.businessId || currentUser?._id;
+    // FIX: Logic to find Business ID from current session
+    // This looks for businessId first, then falls back to the user's own _id (for Admins)
+    const bId = currentUser?.businessId || currentUser?._id;
 
-    if (!businessId) {
-      toast.error("Session Error: Please log out and log in again.");
+    if (!bId) {
+      toast.error("Session Error: Could not verify your business identity. Please re-login.");
       setLoading(false);
       return;
     }
 
     const payload = {
       ...formData,
-      businessId: businessId 
+      businessId: bId 
     };
 
     try {
       if (isEditing) {
         if (!payload.password) delete (payload as any).password;
         await axios.put(`/api/users/${selectedUserId}`, payload);
-        toast.success("User profile updated successfully!");
+        toast.success("Account updated successfully.");
       } else {
         if (!formData.password) {
-          toast.error("Password is required for new registration.");
+          toast.error("Password is required for registration.");
           setLoading(false);
           return;
         }
         await axios.post('/api/users/register', payload);
-        toast.success("New staff member registered!");
+        toast.success("New staff account created.");
       }
       
       resetForm();
@@ -107,7 +113,7 @@ const Accounts = () => {
   };
 
   const handleMasterReset = async () => {
-    if (!adminPassword) return toast.error("Admin password is required.");
+    if (!adminPassword) return toast.error("Please enter admin password.");
     try {
       const res = await axios.post('/api/auth/verify-admin', { 
         username: currentUser.username, 
@@ -115,24 +121,25 @@ const Accounts = () => {
       });
 
       if (res.data.success) {
-        if (confirm("WARNING: This will permanently delete ALL sales, inventory, and account data for this shop. Proceed?")) {
-          await axios.post('/api/system/reset-shop', { businessId: currentUser?.businessId || currentUser?._id });
+        if (confirm("CRITICAL WARNING: This will permanently delete ALL sales, products, and user data. This cannot be undone. Proceed?")) {
+          const bId = currentUser?.businessId || currentUser?._id;
+          await axios.post('/api/system/reset-shop', { businessId: bId });
           localStorage.clear();
-          toast.warn("System reset complete.");
+          toast.warn("System reset successful.");
           window.location.href = '/register';
         }
       } else {
-        toast.error("Invalid Admin credentials.");
+        toast.error("Invalid password provided.");
       }
     } catch (err) {
-      toast.error("Identity verification failed.");
+      toast.error("Verification failed.");
     }
   };
 
   const handleImageChange = (e: any) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 1024 * 1024) return toast.error("Image too large. Max limit is 1MB.");
+      if (file.size > 800 * 1024) return toast.error("Image too large. Max 800KB allowed.");
       const reader = new FileReader();
       reader.onloadend = () => setFormData({ ...formData, image: reader.result as string });
       reader.readAsDataURL(file);
@@ -146,9 +153,9 @@ const Accounts = () => {
         <header className="mb-10 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-black italic text-slate-800 uppercase tracking-tighter flex items-center gap-3">
-              <UserCircle className="text-indigo-600" size={32} /> User Accounts
+              <UserCircle className="text-indigo-600" size={32} /> User Management
             </h1>
-            <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Create and Manage Staff Access</p>
+            <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Control staff access and profile security</p>
           </div>
           <button onClick={fetchUsers} className="p-3 bg-white rounded-2xl shadow-sm text-slate-400 hover:text-indigo-600 transition-all">
             <RefreshCw size={20} />
@@ -157,12 +164,11 @@ const Accounts = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* REGISTRATION FORM */}
           <div className="lg:col-span-4 h-fit sticky top-8">
             <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
               <h2 className="text-xl font-black italic mb-6 uppercase flex items-center gap-2 text-slate-700">
                 {isEditing ? <Edit3 size={20} className="text-amber-500"/> : <UserPlus size={20} className="text-indigo-600"/>} 
-                {isEditing ? 'Update User' : 'Register Staff'}
+                {isEditing ? 'Update Profile' : 'Add New Staff'}
               </h2>
               
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -203,7 +209,7 @@ const Accounts = () => {
                   {isEditing && (
                     <button type="button" onClick={resetForm} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-[10px]">Cancel</button>
                   )}
-                  <button disabled={loading} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50">
+                  <button disabled={loading} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 transition-all">
                     {loading ? <Loader2 className="animate-spin" size={16}/> : <><Save size={16} /> {isEditing ? 'Save Changes' : 'Create Account'}</>}
                   </button>
                 </div>
@@ -211,10 +217,9 @@ const Accounts = () => {
             </div>
           </div>
 
-          {/* USER LIST */}
           <div className="lg:col-span-8 space-y-6">
             <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
-              <h2 className="text-xl font-black italic mb-6 uppercase text-slate-700">System Users</h2>
+              <h2 className="text-xl font-black italic mb-6 uppercase text-slate-700">Team Members</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {users.map((u: any) => (
                   <div key={u._id} className="flex justify-between items-center p-4 bg-slate-50 rounded-[2rem] border border-transparent hover:border-indigo-100 hover:bg-white hover:shadow-md transition-all group">
@@ -228,9 +233,9 @@ const Accounts = () => {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button title="Edit" onClick={() => handleEdit(u)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit3 size={14} /></button>
+                      <button title="Edit User" onClick={() => handleEdit(u)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit3 size={14} /></button>
                       {u.role !== 'Admin' && (
-                        <button title="Delete" onClick={async () => { if(confirm(`Delete ${u.name}?`)) { await axios.delete(`/api/users/${u._id}`); fetchUsers(); toast.info("User deleted."); } }} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Trash2 size={14} /></button>
+                        <button title="Remove User" onClick={async () => { if(confirm(`Delete ${u.name}?`)) { await axios.delete(`/api/users/${u._id}`); fetchUsers(); toast.info("User removed."); } }} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Trash2 size={14} /></button>
                       )}
                     </div>
                   </div>
@@ -238,33 +243,31 @@ const Accounts = () => {
               </div>
             </div>
 
-            {/* DANGER ZONE */}
             <div className="bg-rose-50 p-8 rounded-[3rem] border-2 border-rose-100 flex flex-col md:flex-row justify-between items-center gap-6">
               <div>
                 <h2 className="text-lg font-black italic uppercase text-rose-600 flex items-center gap-2 mb-1">
-                  <ShieldAlert size={20} /> Master Data Reset
+                  <ShieldAlert size={20} /> Danger Zone
                 </h2>
-                <p className="text-rose-400 text-[10px] font-bold uppercase opacity-80 italic">Permanently wipe all shop business data.</p>
+                <p className="text-rose-400 text-[10px] font-bold uppercase opacity-80 italic italic">Wipe all shop data permanently from the server.</p>
               </div>
-              <button onClick={() => setShowResetModal(true)} className="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs shadow-lg shadow-rose-200">
-                Wipe All Data
+              <button onClick={() => setShowResetModal(true)} className="bg-rose-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs shadow-lg shadow-rose-200 hover:bg-rose-700 transition-all">
+                Factory Reset
               </button>
             </div>
           </div>
 
         </div>
 
-        {/* RESET MODAL */}
         {showResetModal && (
           <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
             <div className="bg-white p-10 rounded-[3.5rem] w-full max-w-sm text-center shadow-2xl">
               <KeyRound className="mx-auto text-rose-600 mb-4" size={40} />
-              <h2 className="font-black text-xl mb-2 uppercase italic text-slate-800">Admin Authentication</h2>
-              <input type="password" placeholder="ENTER PASSWORD" className="w-full p-4 bg-slate-100 rounded-2xl mb-6 outline-none border-2 border-transparent focus:border-rose-600 text-center font-black"
+              <h2 className="font-black text-xl mb-2 uppercase italic text-slate-800">Admin Authorization</h2>
+              <input type="password" placeholder="ADMIN PASSWORD" className="w-full p-4 bg-slate-100 rounded-2xl mb-6 outline-none border-2 border-transparent focus:border-rose-600 text-center font-black"
                 onChange={(e) => setAdminPassword(e.target.value)} />
               <div className="flex gap-3">
                 <button onClick={() => setShowResetModal(false)} className="flex-1 py-4 font-black bg-slate-100 rounded-2xl text-slate-400 uppercase text-[10px]">Cancel</button>
-                <button onClick={handleMasterReset} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-[10px]">Reset Now</button>
+                <button onClick={handleMasterReset} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-[10px]">Confirm Wipe</button>
               </div>
             </div>
           </div>
