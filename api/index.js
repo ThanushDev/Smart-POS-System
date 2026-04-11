@@ -25,7 +25,8 @@ const Business = mongoose.models.Business || mongoose.model('Business', new mong
   name: String, 
   email: { type: String, unique: true }, 
   password: { type: String, required: true }, 
-  role: { type: String, default: 'Admin' }
+  role: { type: String, default: 'Admin' },
+  whatsapp: String // WhatsApp Number එක සඳහා
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
@@ -33,30 +34,25 @@ const Product = mongoose.models.Product || mongoose.model('Product', new mongoos
 }, { timestamps: true }));
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, items: Array, total: Number, paymentMethod: String, cashier: String
+  invoiceId: String, 
+  items: Array, 
+  total: Number, 
+  discountTotal: { type: Number, default: 0 }, 
+  paymentMethod: String, 
+  cashier: String
 }, { timestamps: true }));
 
 // --- ROUTES ---
 
-// Login - මෙන්න මෙතැනයි වැරැද්ද සිද්ධ වුණේ. දැන් මෙය නිවැරදි කර ඇත.
+// Login
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   try {
     const { username, password } = req.body;
-    // username යනු email එක බව සහතික කරගන්න
     const user = await Business.findOne({ email: username, password: password });
-    
-    if (user) {
-      res.json({ 
-        success: true, 
-        user: { name: user.name, role: user.role, email: user.email } 
-      });
-    } else {
-      res.status(401).json({ success: false, message: "Invalid credentials" });
-    }
-  } catch (error) { 
-    res.status(500).json({ success: false, message: "Server error" }); 
-  }
+    if (user) res.json({ success: true, user: { name: user.name, role: user.role, email: user.email } });
+    else res.status(401).json({ success: false, message: "Invalid credentials" });
+  } catch (error) { res.status(500).json({ success: false }); }
 });
 
 // Products
@@ -88,7 +84,7 @@ app.delete('/api/products/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Invoices
+// Invoices (Discount සමඟ)
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   const invoices = await Invoice.find().sort({ createdAt: -1 });
@@ -99,7 +95,7 @@ app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const newInvoice = await Invoice.create(req.body);
-    // Stock එක අඩු කරන logic එක
+    // Stock එක අඩු කිරීම
     for (const item of req.body.items) {
       await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
     }
@@ -115,12 +111,12 @@ app.delete('/api/invoices/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ success: false }); }
 });
 
-// Business Profile
+// Business Profile Fetch
 app.get('/api/business', async (req, res) => {
   await connectDB();
   try {
-    const business = await Business.findOne();
-    res.json(business || { name: "Digi Solutions" });
+    const business = await Business.findOne(); // පළමු record එක ලබා ගනී
+    res.json(business || { name: "Digi Solutions", whatsapp: "0000000000" });
   } catch (error) { res.json({ name: "Digi Solutions" }); }
 });
 
