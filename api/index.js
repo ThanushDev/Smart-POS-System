@@ -27,45 +27,54 @@ const connectDB = async () => {
 
 // --- DATABASE MODELS ---
 
-// Business Profile Model
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
   name: String, 
   email: { type: String, unique: true }, 
   password: { type: String, required: true }, 
   role: { type: String, default: 'Admin' },
-  whatsapp: String
+  whatsapp: String,
+  businessId: String // මෙහි දත්ත ගබඩා කිරීම සඳහා
 }));
 
-// Product Model (Including Inventory Discount)
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
   name: String, 
   code: String, 
   price: Number, 
   qty: Number,
-  discount: { type: Number, default: 0 } // Inventory එකෙන් දෙන % එක
+  discount: { type: Number, default: 0 } 
 }, { timestamps: true }));
 
-// Invoice Model (Including Discount Total)
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
   invoiceId: String, 
   items: Array, 
   total: Number, 
   discountTotal: { type: Number, default: 0 },
   paymentMethod: String, 
-  cashier: String
+  cashier: String,
+  businessId: String // කුමන ව්‍යාපාරයට අදාළදැයි හඳුනා ගැනීමට
 }, { timestamps: true }));
 
 
 // --- API ROUTES ---
 
-// 1. AUTHENTICATION
+// 1. AUTHENTICATION (Login Fix)
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   const { username, password } = req.body;
   try {
     const user = await Business.findOne({ email: username, password: password });
     if (user) {
-      res.json({ success: true, user: { name: user.name, role: user.role, email: user.email } });
+      // FIX: _id එක සහ email එක user object එකට එකතු කිරීම
+      res.json({ 
+        success: true, 
+        user: { 
+          _id: user._id, // මෙය අනිවාර්යයි
+          name: user.name, 
+          role: user.role, 
+          email: user.email,
+          businessId: user.businessId || user._id // Session error එක නැති කිරීමට
+        } 
+      });
     } else {
       res.status(401).json({ success: false, message: "Invalid credentials" });
     }
@@ -74,7 +83,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2. PRODUCTS (INVENTORY)
+// 2. PRODUCTS
 app.get('/api/products', async (req, res) => {
   await connectDB();
   try {
@@ -115,12 +124,11 @@ app.delete('/api/products/:id', async (req, res) => {
   }
 });
 
-// 3. INVOICES (SALES RECORDS)
+// 3. INVOICES (Delete Route එක එකතු කර ඇත)
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const invoices = await Invoice.find().sort({ createdAt: -1 });
-    // දත්ත පරීක්ෂා කර පද්ධතිය බිඳ නොවැටෙන ලෙස (Safe Mapping) යැවීම
     const safeInvoices = invoices.map(inv => ({
       _id: inv._id,
       invoiceId: inv.invoiceId || 'N/A',
@@ -140,18 +148,28 @@ app.get('/api/invoices', async (req, res) => {
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
-    // Invoice එක Save කිරීම
     const newInvoice = await Invoice.create(req.body);
-    
-    // බඩු විකුණූ පසු Inventory එකේ Qty අඩු කිරීම
     for (const item of req.body.items) {
       await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
     }
-    
     res.status(201).json(newInvoice);
   } catch (err) {
-    console.error("Invoice Error:", err);
     res.status(500).json({ success: false });
+  }
+});
+
+// CRITICAL FIX: Delete Invoice Route
+app.delete('/api/invoices/:id', async (req, res) => {
+  await connectDB();
+  try {
+    const deleted = await Invoice.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Invoice not found" });
+    }
+    res.json({ success: true, message: "Invoice deleted from MongoDB" });
+  } catch (err) {
+    console.error("Delete error:", err);
+    res.status(500).json({ success: false, message: "Server error during deletion" });
   }
 });
 
@@ -166,7 +184,6 @@ app.get('/api/business', async (req, res) => {
   }
 });
 
-// Profile Update (WhatsApp Number එක වැනි දෑ වෙනස් කිරීමට)
 app.put('/api/business/update', async (req, res) => {
   await connectDB();
   try {
@@ -174,6 +191,27 @@ app.put('/api/business/update', async (req, res) => {
     res.json({ success: true, business: updated });
   } catch (err) {
     res.status(500).json({ success: false });
+  }
+});
+
+// USER MANAGEMENT (Staff Register)
+app.post('/api/users/register', async (req, res) => {
+  await connectDB();
+  try {
+    const newUser = await Business.create(req.body);
+    res.status(201).json({ success: true, user: newUser });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Registration failed" });
+  }
+});
+
+app.get('/api/users', async (req, res) => {
+  await connectDB();
+  try {
+    const users = await Business.find();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json([]);
   }
 });
 
