@@ -25,35 +25,67 @@ const connectDB = async () => {
 
 // --- DATABASE MODELS ---
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, email: { type: String, unique: true }, password: { type: String, required: true }, 
-  role: { type: String, default: 'Admin' }, whatsapp: String, businessId: String, address: String, logo: String
+  name: String, 
+  email: { type: String, unique: true }, 
+  password: { type: String, required: true }, 
+  role: { type: String, default: 'Admin' }, 
+  whatsapp: String, 
+  businessId: String, 
+  address: String, 
+  logo: String
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, code: String, price: Number, qty: Number, discount: { type: Number, default: 0 } 
+  name: String, 
+  code: String, 
+  price: Number, 
+  qty: Number, 
+  discount: { type: Number, default: 0 } 
 }, { timestamps: true }));
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, items: Array, total: Number, discountTotal: { type: Number, default: 0 },
-  paymentMethod: String, cashier: String, businessId: String 
+  invoiceId: String, 
+  items: Array, 
+  total: Number, 
+  discountTotal: { type: Number, default: 0 },
+  paymentMethod: String, 
+  cashier: String, 
+  businessId: String 
 }, { timestamps: true }));
 
 // --- API ROUTES ---
 
+// LOGIN ROUTE (Fixed for Login Failed Issue)
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
-  const { username, password } = req.body;
+  const { username, email, password } = req.body;
+  
+  // Frontend එකෙන් username හෝ email දෙකෙන් මොකක් එවුවත් loginIdentity එකට ගන්නවා
+  const loginIdentity = username || email;
+
   try {
-    const user = await Business.findOne({ email: username, password: password });
+    const user = await Business.findOne({ email: loginIdentity, password: password });
+    
     if (user) {
-      res.json({ success: true, user: { _id: user._id, name: user.name, role: user.role, email: user.email, businessId: user.businessId || user._id } });
+      res.json({ 
+        success: true, 
+        user: { 
+          _id: user._id, 
+          name: user.name, 
+          role: user.role, 
+          email: user.email, 
+          businessId: user.businessId || user._id 
+        } 
+      });
     } else {
-      res.status(401).json({ success: false, message: "Invalid credentials" });
+      res.status(401).json({ success: false, message: "Invalid email or password" });
     }
-  } catch (err) { res.status(500).json({ success: false }); }
+  } catch (err) { 
+    res.status(500).json({ success: false, message: "Server error" }); 
+  }
 });
 
-// User Management (Added to fix Accounts page)
+// USER MANAGEMENT (For Accounts Page)
 app.get('/api/users', async (req, res) => {
   await connectDB();
   const users = await Business.find();
@@ -65,7 +97,9 @@ app.post('/api/users/add', async (req, res) => {
   try {
     const newUser = await Business.create(req.body);
     res.status(201).json(newUser);
-  } catch (err) { res.status(400).json({ message: "Error" }); }
+  } catch (err) { 
+    res.status(400).json({ message: "Email already exists" }); 
+  }
 });
 
 app.put('/api/users/:id', async (req, res) => {
@@ -80,7 +114,7 @@ app.delete('/api/users/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// Products CRUD
+// PRODUCTS (Inventory)
 app.get('/api/products', async (req, res) => {
   await connectDB();
   const products = await Product.find().sort({ createdAt: -1 });
@@ -95,19 +129,20 @@ app.post('/api/products', async (req, res) => {
 
 app.put('/api/products/:id', async (req, res) => {
   await connectDB();
-  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false });
+  // Admin Check via headers
+  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Unauthorized" });
   const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
   res.json({ success: true, product: updated });
 });
 
 app.delete('/api/products/:id', async (req, res) => {
   await connectDB();
-  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false });
+  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Unauthorized" });
   await Product.findByIdAndDelete(req.params.id);
   res.json({ success: true });
 });
 
-// Invoices
+// INVOICES
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   const invoices = await Invoice.find().sort({ createdAt: -1 });
@@ -117,6 +152,7 @@ app.get('/api/invoices', async (req, res) => {
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
   const newInvoice = await Invoice.create(req.body);
+  // Stock decrement logic
   for (const item of req.body.items) {
     await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
   }
@@ -130,6 +166,7 @@ app.delete('/api/invoices/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+// BUSINESS PROFILE
 app.get('/api/business', async (req, res) => {
   await connectDB();
   const business = await Business.findOne({ role: 'Admin' });
