@@ -53,6 +53,33 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false }); }
 });
 
+// User Management (Added to fix Accounts page)
+app.get('/api/users', async (req, res) => {
+  await connectDB();
+  const users = await Business.find();
+  res.json(users);
+});
+
+app.post('/api/users/add', async (req, res) => {
+  await connectDB();
+  try {
+    const newUser = await Business.create(req.body);
+    res.status(201).json(newUser);
+  } catch (err) { res.status(400).json({ message: "Error" }); }
+});
+
+app.put('/api/users/:id', async (req, res) => {
+  await connectDB();
+  const updated = await Business.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(updated);
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  await connectDB();
+  await Business.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
+});
+
 // Products CRUD
 app.get('/api/products', async (req, res) => {
   await connectDB();
@@ -60,30 +87,27 @@ app.get('/api/products', async (req, res) => {
   res.json(products);
 });
 
-// ADD PRODUCT (Staff can add)
 app.post('/api/products', async (req, res) => {
   await connectDB();
   const newProduct = await Product.create(req.body);
   res.status(201).json({ success: true, product: newProduct });
 });
 
-// EDIT PRODUCT (Admin Only)
 app.put('/api/products/:id', async (req, res) => {
   await connectDB();
-  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Admin Only" });
+  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false });
   const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
   res.json({ success: true, product: updated });
 });
 
-// DELETE PRODUCT (Admin Only)
 app.delete('/api/products/:id', async (req, res) => {
   await connectDB();
-  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Admin Only" });
+  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false });
   await Product.findByIdAndDelete(req.params.id);
   res.json({ success: true });
 });
 
-// Invoices Routes
+// Invoices
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   const invoices = await Invoice.find().sort({ createdAt: -1 });
@@ -101,7 +125,7 @@ app.post('/api/invoices', async (req, res) => {
 
 app.delete('/api/invoices/:id', async (req, res) => {
   await connectDB();
-  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false, message: "Admin Only" });
+  if (req.headers['user-role'] !== 'Admin') return res.status(403).json({ success: false });
   await Invoice.findByIdAndDelete(req.params.id);
   res.json({ success: true });
 });
