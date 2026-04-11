@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { LogIn, Lock, User, Terminal, UserPlus, Loader2 } from 'lucide-react';
+import { LogIn, User, Lock, Terminal, UserPlus, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
@@ -18,19 +18,17 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Backend Login API එකට request එක යැවීම
       const res = await axios.post('/api/auth/login', formData);
       
       if (res.data.success) {
         const user = res.data.user;
         
-        // පැරණි දත්ත ඉවත් කර අලුත් User දත්ත ඇතුළත් කිරීම
-        localStorage.removeItem('currentUser');
-        localStorage.setItem('currentUser', JSON.stringify(user));
+        // මීට පෙර තිබූ දත්ත ඉවත් කර අලුත් 'user' දත්ත ඇතුළත් කිරීම
+        localStorage.clear();
+        localStorage.setItem('user', JSON.stringify(user));
         
         toast.success(`Welcome back, ${user.name}!`);
 
-        // Role එක අනුව අදාළ පිටුවට යොමු කිරීම (useNavigate භාවිතා කර ඇත)
         if (user.role === 'Admin') {
           navigate('/Dashboard');
         } else {
@@ -38,10 +36,8 @@ const Login = () => {
         }
       }
     } catch (err: any) {
-      // Backend එකෙන් එන error message එක පෙන්වීම
       const errorMsg = err.response?.data?.message || "Login failed. Check your credentials.";
       toast.error(errorMsg);
-      console.error("Login error:", err.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +45,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background Shapes */}
       <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-500 rounded-full blur-[120px]"></div>
@@ -102,28 +97,17 @@ const Login = () => {
               {isLoading ? (
                 <Loader2 className="animate-spin" size={24} />
               ) : (
-                <>
-                  <LogIn size={20} /> Sign In
-                </>
+                <><LogIn size={20} /> Sign In</>
               )}
             </button>
           </form>
 
           <div className="mt-8 pt-8 border-t border-slate-50 text-center">
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-4">New to the system?</p>
-            <button 
-              onClick={() => navigate('/register')}
-              className="inline-flex items-center gap-2 text-indigo-600 font-black text-xs uppercase hover:underline decoration-2 underline-offset-4"
-            >
+            <button onClick={() => navigate('/register')} className="inline-flex items-center gap-2 text-indigo-600 font-black text-xs uppercase hover:underline">
               <UserPlus size={16} /> Create Admin Account
             </button>
           </div>
-        </div>
-
-        <div className="bg-slate-50 p-6 text-center border-t border-slate-100">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-            Digi Solutions © 2026 • Secure Terminal
-          </p>
         </div>
       </div>
     </div>
