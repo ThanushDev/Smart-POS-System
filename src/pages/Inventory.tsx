@@ -28,18 +28,21 @@ const Inventory = () => {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  // PRINT LOGIC FIX: දත්ත සෙට් වුණාම විතරක් පින්ට් එක වැඩ කරවන්න
+  // PRINT LOGIC FIX
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
     onAfterPrint: () => setSelectedProductForPrint(null)
   });
 
+  // selectedProduct එක වෙනස් වුණු ගමන් (ඩේටා වැටුණු ගමන්) විතරක් පින්ට් එක පටන් ගන්නවා
+  useEffect(() => {
+    if (selectedProductForPrint) {
+      handlePrint();
+    }
+  }, [selectedProductForPrint]);
+
   const triggerBarcodePrint = (product: any) => {
     setSelectedProductForPrint(product);
-    // දත්ත Component එකට load වෙන්න තත්පර බාගයක විරාමයක් දෙනවා
-    setTimeout(() => {
-      handlePrint();
-    }, 500);
   };
 
   const openModal = (product: any = null) => {
@@ -59,6 +62,7 @@ const Inventory = () => {
     try {
       const payload = { ...formData, price: parseFloat(formData.price.toString()), qty: parseFloat(formData.qty.toString()), discount: parseFloat(formData.discount.toString()) };
       if (editingProduct) {
+        if (!isAdmin) return toast.error("Admin Only!");
         await axios.put(`/api/products/${editingProduct._id}`, payload, config);
         toast.success("Updated!");
       } else {
@@ -87,7 +91,7 @@ const Inventory = () => {
           <div className="flex gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
-              <input type="text" placeholder="Search..." className="pl-10 pr-4 py-2.5 bg-white rounded-xl outline-none shadow-sm" onChange={(e) => setSearchTerm(e.target.value)} />
+              <input type="text" placeholder="Search..." className="pl-10 pr-4 py-2.5 bg-white rounded-xl outline-none shadow-sm font-bold" onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <button onClick={() => openModal()} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg">
               <Plus size={18}/> Add Item
@@ -114,17 +118,17 @@ const Inventory = () => {
               </div>
 
               <h3 className="font-black uppercase text-sm mb-1 truncate">{p.name}</h3>
-              <div className="my-3 opacity-60 group-hover:opacity-100 transition-opacity">
+              <div className="my-3 opacity-60 group-hover:opacity-100 transition-opacity flex justify-center">
                 <Barcode value={p.code || "000"} width={1} height={30} fontSize={10} background="transparent" />
               </div>
 
-              <div className="flex justify-between items-end border-t border-slate-50 pt-4">
+              <div className="flex justify-between items-end border-t border-slate-50 pt-4 mt-2">
                 <div>
-                  <p className="text-[10px] font-black text-slate-300 uppercase italic">Price (LKR)</p>
+                  <p className="text-[9px] font-black text-slate-300 uppercase italic">Final Price</p>
                   <p className="text-xl font-black text-indigo-600 italic">Rs.{(p.price - (p.price * p.discount / 100)).toFixed(2)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-300 uppercase italic">In Stock</p>
+                  <p className="text-[9px] font-black text-slate-300 uppercase italic">Stock</p>
                   <p className="text-lg font-black">{p.qty}</p>
                 </div>
               </div>
@@ -133,8 +137,8 @@ const Inventory = () => {
         </div>
       </main>
 
-      {/* Hidden Print Container - CSS සහ Visibility Fixes */}
-      <div style={{ display: 'none' }}>
+      {/* Hidden Print Container - CSS Fix */}
+      <div className="hidden">
         <div ref={printRef}>
            {selectedProductForPrint && (
              <PrintableBarcode 
@@ -157,11 +161,11 @@ const Inventory = () => {
                 <input type="number" step="any" placeholder="Price" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} required />
                 <input type="number" step="any" placeholder="Qty" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.qty} onChange={(e) => setFormData({...formData, qty: Number(e.target.value)})} required />
               </div>
-              <div className="p-4 bg-emerald-50 rounded-2xl">
+              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                 <label className="text-[10px] font-black text-emerald-600 uppercase">Discount %</label>
                 <input type="number" step="any" className="w-full bg-transparent outline-none font-black text-emerald-700 text-xl" value={formData.discount} onChange={(e) => setFormData({...formData, discount: Number(e.target.value)})} />
               </div>
-              <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase shadow-lg">Save Changes</button>
+              <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase shadow-lg transition-all active:scale-95">Save Changes</button>
             </form>
           </div>
         </div>
