@@ -30,7 +30,7 @@
     "mongoose": "^8.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "@radix-ui/react-dialog": "^1.1.1",
+    "react-to-print": "^2.14.15",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
