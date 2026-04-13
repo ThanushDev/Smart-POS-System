@@ -1,226 +1,230 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
-import PrintableBill from '../components/PrintableBill';
-import { Banknote, CreditCard, Trash2, Plus, Minus, Search, Tag } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { Search, ShoppingCart, Trash2, Plus, Minus, Receipt, User, Smartphone, X } from 'lucide-react';
 import axios from 'axios';
-import { io } from 'socket.io-client';
-
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || window.location.origin);
+import { toast } from 'react-toastify';
 
 const NewBill = () => {
   const [products, setProducts] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<any[]>([]);
-  const [showPayModal, setShowPayModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [businessInfo, setBusinessInfo] = useState<any>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [printData, setPrintData] = useState<any>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [customer, setCustomer] = useState({ name: '', phone: '' });
+  const [business, setBusiness] = useState<any>(null);
+
+  // Barcode Scanner එකෙන් scan කරන කොට focus වෙන්න ඕන input එකට ref එකක්
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [busRes, prodRes] = await Promise.all([axios.get('/api/business'), axios.get('/api/products')]);
-        setBusinessInfo(busRes.data);
-        setProducts(prodRes.data);
-      } catch (err) { toast.error("Sync error!"); }
-    };
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) setCurrentUser(JSON.parse(savedUser));
     fetchData();
-    socket.on('update-sync', fetchData);
-    return () => { socket.off('update-sync'); };
+    // පිටුව load වුණු ගමන් search box එකට focus කරනවා (Scanner එකට ලේසි වෙන්න)
+    searchInputRef.current?.focus();
   }, []);
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const fetchData = async () => {
+    const [pRes, bRes] = await Promise.all([
+      axios.get('/api/products'),
+      axios.get('/api/business')
+    ]);
+    setProducts(pRes.data);
+    setBusiness(bRes.data);
+  };
 
-  // KEYBOARD NAVIGATION
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (showPayModal) {
-        if (e.key === 'Enter') { e.preventDefault(); handleFinish(paymentMethod); }
-        if (e.key === 'ArrowRight') setPaymentMethod('Card');
-        if (e.key === 'ArrowLeft') setPaymentMethod('Cash');
-        if (e.key === 'Escape') setShowPayModal(false);
-        return;
-      }
+  // --- BARCODE / SEARCH LOGIC ---
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
 
-      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => Math.min(prev + 3, filteredProducts.length - 1)); }
-      if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => Math.max(prev - 3, 0)); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); setSelectedIndex(prev => Math.min(prev + 1, filteredProducts.length - 1)); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); setSelectedIndex(prev => Math.max(prev - 1, 0)); }
-      
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (filteredProducts[selectedIndex]) addToCart(filteredProducts[selectedIndex]);
-      }
-      
-      if (e.key === 'F9') { e.preventDefault(); if(cart.length > 0) setShowPayModal(true); }
-      if (e.key === 'F1') { e.preventDefault(); searchInputRef.current?.focus(); }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIndex, filteredProducts, showPayModal, paymentMethod, cart]);
-
-  const addToCart = (product: any) => {
-    const existing = cart.find(item => item._id === product._id);
-    const unitDiscount = product.discount ? (product.price * product.discount / 100) : 0;
-    if (existing) {
-      setCart(cart.map(item => item._id === product._id ? { ...item, quantity: item.quantity + 1 } : item));
-    } else {
-      setCart([...cart, { ...product, quantity: 1, unitDiscount, originalPrice: product.price }]);
+    // Scan කළොත් හෝ හරියටම Code එක ටයිප් කළොත් Auto Add වෙන ලොජික් එක
+    const foundProduct = products.find(p => p.code === value);
+    
+    if (foundProduct) {
+      addToCart(foundProduct);
+      setSearchTerm(''); // එකතු වුණාට පස්සේ search box එක clear කරනවා ඊළඟ scan එකට
     }
   };
 
-  const updateQty = (id: string, delta: number) => {
-    setCart(cart.map(item => item._id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
+  const addToCart = (product: any) => {
+    if (product.qty <= 0) return toast.error("Out of stock!");
+    
+    setCart(currentCart => {
+      const existing = currentCart.find(item => item._id === product._id);
+      if (existing) {
+        if (existing.quantity >= product.qty) {
+          toast.warn("Stock limit reached");
+          return currentCart;
+        }
+        return currentCart.map(item =>
+          item._id === product._id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...currentCart, { ...product, quantity: 1 }];
+    });
   };
 
-  const subTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const totalDiscount = cart.reduce((sum, item) => sum + (item.unitDiscount * item.quantity), 0);
-  const finalTotal = subTotal - totalDiscount;
+  const updateQty = (id: string, delta: number) => {
+    setCart(prev => prev.map(item => {
+      if (item._id === id) {
+        const newQty = item.quantity + delta;
+        const originalProduct = products.find(p => p._id === id);
+        if (newQty > 0 && newQty <= originalProduct.qty) {
+          return { ...item, quantity: newQty };
+        }
+      }
+      return item;
+    }));
+  };
 
-  const handleFinish = async (method: string) => {
-    const invId = `INV-${Date.now().toString().slice(-6)}`;
-    const cashierName = currentUser?.name || 'Staff';
-    const currentPrintData = {
-      invoiceId: invId,
-      cart: [...cart],
+  const removeFromCart = (id: string) => {
+    setCart(prev => prev.filter(item => item._id !== id));
+  };
+
+  // කැල්කියුලේෂන් (Decimal Support එකත් එක්ක)
+  const subTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const discountTotal = cart.reduce((sum, item) => sum + ((item.price * (item.discount || 0) / 100) * item.quantity), 0);
+  const finalTotal = subTotal - discountTotal;
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return toast.error("Cart is empty");
+    
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const invoiceData = {
+      invoiceId: `INV-${Date.now()}`,
+      items: cart,
       total: finalTotal,
-      discountTotal: totalDiscount,
-      paymentMethod: method,
-      businessInfo,
-      currentUser: { name: cashierName },
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString()
+      discountTotal: discountTotal,
+      cashier: user.name || "Staff",
+      customerName: customer.name,
+      customerPhone: customer.phone,
+      date: new Date()
     };
-    setPrintData(currentPrintData);
+
     try {
-      await axios.post('/api/invoices', { invoiceId: invId, items: cart, total: finalTotal, discountTotal: totalDiscount, paymentMethod: method, cashier: cashierName });
-      socket.emit('update-data');
-      setShowPayModal(false);
-      setTimeout(() => { window.print(); setCart([]); setPrintData(null); }, 500);
-      toast.success("Invoice Printed!");
-    } catch (err) { toast.error("Submission failed!"); }
+      await axios.post('/api/invoices', invoiceData);
+      toast.success("Invoice Saved Successfully!");
+      setCart([]);
+      setCustomer({ name: '', phone: '' });
+      fetchData(); // Stock update එක බලාගන්න
+    } catch (err) {
+      toast.error("Checkout Failed");
+    }
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans">
+    <div className="flex h-screen bg-slate-100 font-sans">
       <Sidebar />
-      <main className="flex-1 p-8 flex gap-6 overflow-hidden">
-        {/* PRODUCTS SECTION */}
-        <div className="flex-1 bg-white rounded-[2.5rem] p-8 shadow-sm flex flex-col border border-slate-100">
-          <div className="flex justify-between mb-6">
-            <h2 className="text-2xl font-black italic text-indigo-600 tracking-tighter uppercase">Point of Sale</h2>
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
-              <input ref={searchInputRef} type="text" placeholder="Search Item (F1)..." className="bg-slate-50 pl-10 pr-4 py-2 rounded-xl outline-none font-bold w-64 border border-transparent focus:border-indigo-100 transition-all" onChange={(e) => {setSearchTerm(e.target.value); setSelectedIndex(0);}} />
+      <main className="flex-1 p-6 flex gap-6 overflow-hidden">
+        
+        {/* වම් පැත්ත: Product Search & List */}
+        <div className="flex-[1.5] flex flex-col gap-4">
+          <div className="bg-white p-4 rounded-[2rem] shadow-sm flex items-center gap-4 border border-slate-200">
+            <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
+              <Search size={20} />
             </div>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Scan Barcode or Type Product Code/Name..."
+              className="flex-1 outline-none font-bold text-slate-700"
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+            {searchTerm && <button onClick={() => setSearchTerm('')}><X size={18} className="text-slate-400" /></button>}
           </div>
-          
-          <div className="grid grid-cols-3 gap-4 overflow-y-auto pr-2">
-            {filteredProducts.map((p, i) => (
-              <button key={p._id} onClick={() => addToCart(p)} className={`p-5 rounded-[2rem] border-2 transition-all text-left relative group ${i === selectedIndex ? 'border-indigo-600 bg-indigo-50 shadow-lg ring-4 ring-indigo-100 scale-[1.02]' : 'border-transparent bg-slate-50 hover:bg-slate-100'}`}>
-                <div className="flex justify-between items-start">
-                   <p className="font-black uppercase text-[11px] text-slate-800 truncate w-3/4">{p.name}</p>
-                   {p.discount > 0 && <Tag size={14} className="text-emerald-500 fill-emerald-50" />}
+
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pr-2">
+            {products
+              .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.includes(searchTerm))
+              .map(p => (
+                <div 
+                  key={p._id} 
+                  onClick={() => addToCart(p)}
+                  className="bg-white p-4 rounded-[2rem] border border-slate-100 hover:border-indigo-400 cursor-pointer transition-all shadow-sm group"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                      <Plus size={20} />
+                    </div>
+                    {p.discount > 0 && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-1 rounded-lg uppercase">{p.discount}% OFF</span>}
+                  </div>
+                  <h4 className="font-black text-xs uppercase truncate">{p.name}</h4>
+                  <p className="text-[10px] text-slate-400 font-bold mb-2">CODE: {p.code}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-indigo-600 font-black italic">Rs.{(p.price - (p.price * p.discount / 100)).toFixed(2)}</span>
+                    <span className={`text-[10px] font-bold ${p.qty < 5 ? 'text-rose-500' : 'text-slate-400'}`}>Qty: {p.qty}</span>
+                  </div>
                 </div>
-                <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">#{p.code}</p>
-                
-                <div className="mt-3 flex items-baseline gap-2">
-                   <p className="text-indigo-600 font-black text-lg italic">Rs.{p.price - (p.price * (p.discount || 0) / 100)}</p>
-                   {p.discount > 0 && <span className="text-[10px] text-slate-300 line-through font-bold">Rs.{p.price}</span>}
-                </div>
-                
-                {p.discount > 0 && (
-                  <span className="absolute top-3 right-3 bg-emerald-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black uppercase">-{p.discount}%</span>
-                )}
-              </button>
-            ))}
+              ))}
           </div>
         </div>
 
-        {/* CART SECTION */}
-        <div className="w-[400px] bg-white rounded-[3rem] p-6 shadow-xl flex flex-col border border-slate-100">
-          <h3 className="font-black text-slate-400 text-center mb-4 uppercase text-[10px] tracking-[0.2em]">Current Order</h3>
-          <div className="flex-1 overflow-y-auto space-y-3 px-1">
-            {cart.map(item => (
-              <div key={item._id} className="bg-slate-50 p-4 rounded-3xl border border-slate-100 hover:border-indigo-100 transition-all">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-black text-[12px] uppercase text-slate-800">{item.name}</p>
-                    <p className="text-[9px] font-bold text-slate-400">CODE: {item.code}</p>
-                  </div>
-                  <button onClick={() => setCart(cart.filter(c => c._id !== item._id))} className="text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={16}/></button>
-                </div>
-                
-                <div className="flex justify-between items-center mt-4">
-                  <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-slate-100">
-                    <button onClick={() => updateQty(item._id, -1)} className="text-indigo-600 hover:bg-indigo-50 rounded-md p-0.5"><Minus size={14}/></button>
-                    <span className="font-black text-sm w-4 text-center">{item.quantity}</span>
-                    <button onClick={() => updateQty(item._id, 1)} className="text-indigo-600 hover:bg-indigo-50 rounded-md p-0.5"><Plus size={14}/></button>
-                  </div>
-                  <div className="text-right">
-                     <p className="font-black text-indigo-600 text-sm italic">Rs.{(item.price - item.unitDiscount) * item.quantity}</p>
-                     {item.unitDiscount > 0 && <p className="text-[9px] font-bold text-emerald-500">SAVED Rs.{item.unitDiscount * item.quantity}</p>}
-                  </div>
-                </div>
+        {/* දකුණු පැත්ත: Cart & Checkout */}
+        <div className="flex-1 bg-white rounded-[3rem] shadow-xl border border-slate-100 flex flex-col overflow-hidden">
+          <div className="p-8 border-b border-slate-50">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-black italic uppercase tracking-tighter">Current Bill</h2>
+              <div className="bg-indigo-50 text-indigo-600 p-3 rounded-2xl"><ShoppingCart size={24} /></div>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl">
+                <User size={18} className="text-slate-400" />
+                <input type="text" placeholder="Customer Name" className="bg-transparent outline-none text-xs font-bold w-full" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} />
               </div>
-            ))}
+              <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl">
+                <Smartphone size={18} className="text-slate-400" />
+                <input type="text" placeholder="Phone Number" className="bg-transparent outline-none text-xs font-bold w-full" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} />
+              </div>
+            </div>
           </div>
 
-          <div className="mt-4 p-6 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl">
-            <div className="space-y-1 mb-4">
-               <div className="flex justify-between text-slate-400 text-[10px] font-bold uppercase tracking-widest"><span>Subtotal</span><span>Rs.{subTotal}</span></div>
-               <div className="flex justify-between text-emerald-400 text-[10px] font-bold uppercase tracking-widest"><span>Discount</span><span>- Rs.{totalDiscount}</span></div>
+          <div className="flex-1 overflow-y-auto p-8 space-y-4">
+            {cart.map(item => (
+              <div key={item._id} className="flex items-center justify-between group">
+                <div className="flex-1">
+                  <h5 className="font-black text-[11px] uppercase truncate">{item.name}</h5>
+                  <p className="text-[10px] font-bold text-indigo-600">Rs.{item.price.toFixed(2)} x {item.quantity}</p>
+                </div>
+                <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-xl">
+                  <button onClick={() => updateQty(item._id, -1)} className="p-1 hover:bg-white rounded-lg shadow-sm"><Minus size={14}/></button>
+                  <span className="font-black text-xs w-4 text-center">{item.quantity}</span>
+                  <button onClick={() => updateQty(item._id, 1)} className="p-1 hover:bg-white rounded-lg shadow-sm"><Plus size={14}/></button>
+                </div>
+                <button onClick={() => removeFromCart(item._id)} className="ml-4 text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+              </div>
+            ))}
+            {cart.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-slate-300">
+                <Receipt size={48} strokeWidth={1} />
+                <p className="text-xs font-bold mt-2 uppercase">Cart is Empty</p>
+              </div>
+            )}
+          </div>
+
+          <div className="p-8 bg-slate-50/50 border-t border-slate-100">
+            <div className="space-y-2 mb-6">
+              <div className="flex justify-between text-xs font-bold text-slate-400 italic">
+                <span>SUBTOTAL</span>
+                <span>Rs.{subTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs font-bold text-emerald-500 italic">
+                <span>TOTAL SAVINGS</span>
+                <span>- Rs.{discountTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xl font-black text-slate-800 pt-2 border-t border-slate-200 uppercase italic tracking-tighter">
+                <span>Net Total</span>
+                <span className="text-indigo-600">Rs.{finalTotal.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex justify-between font-black text-3xl mb-6 italic tracking-tighter"><span>TOTAL</span><span>Rs.{finalTotal}</span></div>
-            <button onClick={() => setShowPayModal(true)} disabled={cart.length === 0} className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all shadow-lg shadow-indigo-500/20 active:scale-95 disabled:opacity-50 disabled:grayscale">Checkout (F9)</button>
+            <button 
+              onClick={handleCheckout}
+              disabled={cart.length === 0}
+              className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-[2rem] font-black uppercase shadow-lg shadow-indigo-100 transition-all active:scale-95"
+            >
+              Complete Checkout
+            </button>
           </div>
         </div>
       </main>
-
-      {/* PAYMENT MODAL */}
-      {showPayModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
-          <div className="bg-white p-10 rounded-[3.5rem] w-full max-w-sm text-center shadow-2xl animate-in zoom-in duration-200">
-            <h3 className="font-black mb-8 uppercase text-slate-400 text-[10px] tracking-widest">Select Method</h3>
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <button onClick={() => setPaymentMethod('Cash')} className={`p-8 border-4 rounded-[3rem] transition-all ${paymentMethod === 'Cash' ? 'border-emerald-500 bg-emerald-50 scale-105' : 'border-slate-50 hover:bg-slate-50'}`}>
-                <Banknote className={`mx-auto mb-2 ${paymentMethod === 'Cash' ? 'text-emerald-500' : 'text-slate-300'}`} size={32} />
-                <span className={`font-black uppercase text-[10px] ${paymentMethod === 'Cash' ? 'text-emerald-700' : 'text-slate-400'}`}>Cash</span>
-              </button>
-              <button onClick={() => setPaymentMethod('Card')} className={`p-8 border-4 rounded-[3rem] transition-all ${paymentMethod === 'Card' ? 'border-indigo-500 bg-indigo-50 scale-105' : 'border-slate-50 hover:bg-slate-50'}`}>
-                <CreditCard className={`mx-auto mb-2 ${paymentMethod === 'Card' ? 'text-indigo-500' : 'text-slate-300'}`} size={32} />
-                <span className={`font-black uppercase text-[10px] ${paymentMethod === 'Card' ? 'text-indigo-700' : 'text-slate-400'}`}>Card</span>
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setShowPayModal(false)} className="flex-1 py-5 bg-slate-100 text-slate-400 rounded-2xl font-black uppercase text-[10px]">Cancel</button>
-              <button onClick={() => handleFinish(paymentMethod)} className="flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-indigo-200">Confirm & Print</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PRINT AREA */}
-      <div className="print-area hidden">
-        {printData && <PrintableBill {...printData} />}
-      </div>
-      
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; left: 0; top: 0; width: 80mm; }
-        }
-      `}</style>
     </div>
   );
 };
