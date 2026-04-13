@@ -38,7 +38,7 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 
 // --- ROUTES ---
 
-// 1. Dashboard Stats
+// 1. Dashboard Stats (ඔයාගේ පරණ එකමයි)
 app.get('/api/dashboard/stats', async (req, res) => {
   await connectDB();
   try {
@@ -49,7 +49,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// 2. Auth Login
+// 2. Auth Login (ඔයාගේ පරණ එකමයි)
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   const { username, password } = req.body;
@@ -62,17 +62,22 @@ app.post('/api/auth/login', async (req, res) => {
 
 // 3. Products / Inventory
 
-// GET: Products (Open for Everyone)
+// GET: Products
 app.get('/api/products', async (req, res) => {
   await connectDB();
   res.json(await Product.find().sort({ createdAt: -1 }));
 });
 
-// POST: Add Product (Admin & Staff දෙන්නටම පුළුවන්)
+// POST: Add Product (Admin & Staff දෙන්නටම පුළුවන් - Discount එකත් එක්කම)
 app.post('/api/products', async (req, res) => {
   await connectDB();
   try {
-    const newProduct = await Product.create(req.body);
+    // Discount එකක් නැත්නම් default 0 සෙට් වෙනවා
+    const productData = {
+      ...req.body,
+      discount: req.body.discount || 0
+    };
+    const newProduct = await Product.create(productData);
     res.status(201).json({ success: true, product: newProduct });
   } catch (err) { res.status(500).json({ success: false, message: "Add failed" }); }
 });
@@ -87,8 +92,7 @@ app.put('/api/products/:id', async (req, res) => {
       res.json({ success: true, product: updated });
     } catch (err) { res.status(500).json({ success: false }); }
   } else {
-    // Staff කෙනෙක් Edit කරන්න හැදුවොත් මේ error එක යනවා
-    res.status(403).json({ success: false, message: "Privacy Alert: Only Admin can edit products!" });
+    res.status(403).json({ success: false, message: "Only Admin can edit products and discounts!" });
   }
 });
 
@@ -102,11 +106,11 @@ app.delete('/api/products/:id', async (req, res) => {
       res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false }); }
   } else {
-    res.status(403).json({ success: false, message: "Forbidden" });
+    res.status(403).json({ success: false });
   }
 });
 
-// 4. Invoices
+// 4. Invoices (ඔයාගේ පරණ එකමයි)
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   res.json(await Invoice.find().sort({ createdAt: -1 }));
@@ -134,7 +138,7 @@ app.delete('/api/invoices/:id', async (req, res) => {
   }
 });
 
-// 5. User Management & Business info
+// 5. User Management & Business info (ඔයාගේ පරණ එකමයි)
 app.get('/api/users', async (req, res) => {
   await connectDB();
   res.json(await Business.find());
