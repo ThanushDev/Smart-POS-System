@@ -61,36 +61,46 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // 3. Products / Inventory
+
+// GET: Products (Open for Everyone)
 app.get('/api/products', async (req, res) => {
   await connectDB();
   res.json(await Product.find().sort({ createdAt: -1 }));
 });
 
+// POST: Add Product (Admin & Staff දෙන්නටම පුළුවන්)
 app.post('/api/products', async (req, res) => {
   await connectDB();
-  const newProduct = await Product.create(req.body);
-  res.status(201).json({ success: true, product: newProduct });
+  try {
+    const newProduct = await Product.create(req.body);
+    res.status(201).json({ success: true, product: newProduct });
+  } catch (err) { res.status(500).json({ success: false, message: "Add failed" }); }
 });
 
-// PUT Route (Inventory Edit - Admin Only)
+// PUT: Edit Product (Admin Only - Privacy protection)
 app.put('/api/products/:id', async (req, res) => {
   await connectDB();
   const userRole = req.headers['user-role'];
   if (userRole === 'Admin') {
-    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json({ success: true, product: updated });
+    try {
+      const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      res.json({ success: true, product: updated });
+    } catch (err) { res.status(500).json({ success: false }); }
   } else {
-    res.status(403).json({ success: false, message: "Only Admin can edit products" });
+    // Staff කෙනෙක් Edit කරන්න හැදුවොත් මේ error එක යනවා
+    res.status(403).json({ success: false, message: "Privacy Alert: Only Admin can edit products!" });
   }
 });
 
-// DELETE PRODUCT (Admin Only)
+// DELETE: Product (Admin Only)
 app.delete('/api/products/:id', async (req, res) => {
   await connectDB();
   const userRole = req.headers['user-role'];
   if (userRole === 'Admin') {
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
+    try {
+      await Product.findByIdAndDelete(req.params.id);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false }); }
   } else {
     res.status(403).json({ success: false, message: "Forbidden" });
   }
@@ -104,11 +114,13 @@ app.get('/api/invoices', async (req, res) => {
 
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
-  const newInvoice = await Invoice.create(req.body);
-  for (const item of req.body.items) {
-    await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
-  }
-  res.status(201).json(newInvoice);
+  try {
+    const newInvoice = await Invoice.create(req.body);
+    for (const item of req.body.items) {
+      await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
+    }
+    res.status(201).json(newInvoice);
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.delete('/api/invoices/:id', async (req, res) => {
