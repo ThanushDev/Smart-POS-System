@@ -22,7 +22,6 @@ const connectDB = async () => {
 };
 
 // --- MODELS ---
-// Business Model එකට address සහ logo එකත් ඇතුළත් කළා
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
   name: String, 
   email: { type: String, unique: true }, 
@@ -43,8 +42,6 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 }, { timestamps: true }));
 
 // --- AUTH ROUTES ---
-
-// 1. REGISTER (මේක තමයි අලුතින්ම එකතු කළේ)
 app.post('/api/auth/register', async (req, res) => {
   await connectDB();
   try {
@@ -59,12 +56,10 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// 2. LOGIN (Username/Email mismatch එක මෙතනින් fix කළා)
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   try {
     const { username, password } = req.body; 
-    // Frontend එකෙන් එන 'username' කියන එක Backend එකේ 'email' එකට match කරනවා
     const user = await Business.findOne({ email: username, password: password });
     
     if (user) {
@@ -117,12 +112,35 @@ app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const newInvoice = await Invoice.create(req.body);
-    // Stock එක අඩු කිරීම
     for (const item of req.body.items) {
       await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
     }
     res.status(201).json(newInvoice);
   } catch (err) { res.status(500).json({ success: false }); }
+});
+
+// --- DATABASE RESET ROUTE (Temporary Security Tool) ---
+app.get('/api/admin/system-reset', async (req, res) => {
+  const { key } = req.query;
+  
+  // URL eke anthimata ?key=delete123 thibunoth pamanak weda karai
+  if (key !== 'delete123') {
+    return res.status(403).json({ success: false, message: "Unauthorized Access!" });
+  }
+
+  try {
+    await connectDB();
+    await Business.deleteMany({});
+    await Product.deleteMany({});
+    await Invoice.deleteMany({});
+
+    res.json({ 
+      success: true, 
+      message: "Database eka sampurnayen clear kala. Dan aluthin register wenna puluwan." 
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 export default app;
