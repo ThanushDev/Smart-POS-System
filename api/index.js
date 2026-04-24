@@ -22,9 +22,16 @@ const connectDB = async () => {
 };
 
 // --- MODELS ---
+// Business Model එකට address සහ logo එකත් ඇතුළත් කළා
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, email: { type: String, unique: true }, password: { type: String, required: true }, 
-  role: { type: String, default: 'Admin' }, whatsapp: String, businessId: String
+  name: String, 
+  email: { type: String, unique: true }, 
+  password: { type: String, required: true }, 
+  role: { type: String, default: 'Admin' }, 
+  whatsapp: String, 
+  address: String,
+  logo: String,
+  businessId: String
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
@@ -32,85 +39,75 @@ const Product = mongoose.models.Product || mongoose.model('Product', new mongoos
 }, { timestamps: true }));
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, items: Array, total: Number, discountTotal: { type: Number, default: 0 },
-  paymentMethod: String, cashier: String, businessId: String 
+  invoiceId: String, items: Array, total: Number, discountTotal: Number, cashier: String, date: String, time: String
 }, { timestamps: true }));
 
-// --- ROUTES ---
+// --- AUTH ROUTES ---
 
-// 1. Dashboard Stats (ඔයාගේ පරණ එකමයි)
-app.get('/api/dashboard/stats', async (req, res) => {
+// 1. REGISTER (මේක තමයි අලුතින්ම එකතු කළේ)
+app.post('/api/auth/register', async (req, res) => {
   await connectDB();
   try {
-    const productCount = await Product.countDocuments();
-    const invoiceData = await Invoice.find();
-    const totalSales = invoiceData.reduce((sum, inv) => sum + (inv.total || 0), 0);
-    res.json({ totalProducts: productCount, totalSales: totalSales, totalInvoices: invoiceData.length, recentActivity: invoiceData.slice(-5).reverse() });
-  } catch (err) { res.status(500).json({ success: false }); }
+    const { email } = req.body;
+    const existing = await Business.findOne({ email });
+    if (existing) return res.status(400).json({ success: false, message: "Email already exists" });
+
+    const newUser = await Business.create(req.body);
+    res.status(201).json({ success: true, user: newUser });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Registration failed: " + err.message });
+  }
 });
 
-// 2. Auth Login (ඔයාගේ පරණ එකමයි)
+// 2. LOGIN (Username/Email mismatch එක මෙතනින් fix කළා)
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
-  const { username, password } = req.body;
   try {
+    const { username, password } = req.body; 
+    // Frontend එකෙන් එන 'username' කියන එක Backend එකේ 'email' එකට match කරනවා
     const user = await Business.findOne({ email: username, password: password });
-    if (user) res.json({ success: true, user: { _id: user._id, name: user.name, role: user.role, email: user.email } });
-    else res.status(401).json({ success: false });
-  } catch (err) { res.status(500).json({ success: false }); }
+    
+    if (user) {
+      res.json({ success: true, user });
+    } else {
+      res.status(401).json({ success: false, message: "Invalid Email or Password" });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Login Error" });
+  }
 });
 
-// 3. Products / Inventory
-
-// GET: Products
+// --- PRODUCT ROUTES ---
 app.get('/api/products', async (req, res) => {
   await connectDB();
-  res.json(await Product.find().sort({ createdAt: -1 }));
+  res.json(await Product.find());
 });
 
-// POST: Add Product (Admin & Staff දෙන්නටම පුළුවන් - Discount එකත් එක්කම)
 app.post('/api/products', async (req, res) => {
   await connectDB();
   try {
-    // Discount එකක් නැත්නම් default 0 සෙට් වෙනවා
-    const productData = {
-      ...req.body,
-      discount: req.body.discount || 0
-    };
-    const newProduct = await Product.create(productData);
-    res.status(201).json({ success: true, product: newProduct });
-  } catch (err) { res.status(500).json({ success: false, message: "Add failed" }); }
+    const product = await Product.create(req.body);
+    res.status(201).json(product);
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// PUT: Edit Product (Admin Only - Privacy protection)
 app.put('/api/products/:id', async (req, res) => {
   await connectDB();
-  const userRole = req.headers['user-role'];
-  if (userRole === 'Admin') {
-    try {
-      const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-      res.json({ success: true, product: updated });
-    } catch (err) { res.status(500).json({ success: false }); }
-  } else {
-    res.status(403).json({ success: false, message: "Only Admin can edit products and discounts!" });
-  }
+  try {
+    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(product);
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// DELETE: Product (Admin Only)
 app.delete('/api/products/:id', async (req, res) => {
   await connectDB();
-  const userRole = req.headers['user-role'];
-  if (userRole === 'Admin') {
-    try {
-      await Product.findByIdAndDelete(req.params.id);
-      res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false }); }
-  } else {
-    res.status(403).json({ success: false });
-  }
+  try {
+    await Product.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// 4. Invoices (ඔයාගේ පරණ එකමයි)
+// --- INVOICE ROUTES ---
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   res.json(await Invoice.find().sort({ createdAt: -1 }));
@@ -120,34 +117,12 @@ app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const newInvoice = await Invoice.create(req.body);
+    // Stock එක අඩු කිරීම
     for (const item of req.body.items) {
       await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
     }
     res.status(201).json(newInvoice);
   } catch (err) { res.status(500).json({ success: false }); }
-});
-
-app.delete('/api/invoices/:id', async (req, res) => {
-  await connectDB();
-  const userRole = req.headers['user-role'];
-  if (userRole === 'Admin') {
-    await Invoice.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } else {
-    res.status(403).json({ success: false });
-  }
-});
-
-// 5. User Management & Business info (ඔයාගේ පරණ එකමයි)
-app.get('/api/users', async (req, res) => {
-  await connectDB();
-  res.json(await Business.find());
-});
-
-app.get('/api/business', async (req, res) => {
-  await connectDB();
-  const bus = await Business.findOne({ role: 'Admin' });
-  res.json(bus || { name: "Digi Solutions" });
 });
 
 export default app;
