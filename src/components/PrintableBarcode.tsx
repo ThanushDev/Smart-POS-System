@@ -4,7 +4,6 @@ const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, busin
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    // Dynamic load JsBarcode only when needed
     const script = document.createElement("script");
     script.src = "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js";
     script.async = true;
@@ -22,14 +21,10 @@ const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, busin
       }
     };
     document.body.appendChild(script);
-    return () => { 
-      if (document.body.contains(script)) document.body.removeChild(script); 
-    };
+    return () => { if (document.body.contains(script)) document.body.removeChild(script); };
   }, [product]);
 
   if (!product) return null;
-
-  const finalPrice = product.price - (product.price * (product.discount || 0) / 100);
 
   return (
     <div ref={ref} style={{ width: '50mm', height: '25mm', padding: '10px', backgroundColor: 'white', color: 'black', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -40,10 +35,10 @@ const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, busin
         }
       `}</style>
       <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>{businessName}</div>
-      <div style={{ fontSize: '8px', fontStyle: 'italic', marginBottom: '2px' }}>{product.name}</div>
-      <svg ref={svgRef} style={{ maxWidth: '100%' }}></svg>
+      <div style={{ fontSize: '8px', marginBottom: '2px' }}>{product.name}</div>
+      <svg ref={svgRef}></svg>
       <div style={{ fontSize: '12px', fontWeight: 'bold', borderTop: '1px dashed #000', width: '100%', textAlign: 'center', marginTop: '2px' }}>
-        Rs.{Number(finalPrice).toLocaleString()}
+        Rs.{Number(product.price - (product.price * (product.discount || 0) / 100)).toLocaleString()}
       </div>
     </div>
   );
