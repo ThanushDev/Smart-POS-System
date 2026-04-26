@@ -15,7 +15,7 @@ const Inventory = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const API_URL = "/api/products";
 
-  // Navigation Logic (Arrow Keys)
+  // Arrow Key Navigation logic
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -35,7 +35,7 @@ const Inventory = () => {
 
   useEffect(() => { if (user.businessId) fetchProducts(); }, [user.businessId]);
 
-  // --- STABLE CUSTOM PRINT LOGIC ---
+  // --- STABLE SINGLE PAGE PRINT LOGIC ---
   const triggerPrint = (product: any) => {
     const businessName = user.name || "DIGI SOLUTIONS";
     const printWindow = window.open('', '_blank', 'width=600,height=600');
@@ -48,31 +48,80 @@ const Inventory = () => {
           <title>Print Barcode</title>
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
           <style>
-            @page { size: 50mm 25mm; margin: 0; }
-            body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
-            .sticker { width: 50mm; height: 25mm; padding: 5px; text-align: center; box-sizing: border-box; }
-            .price { font-weight: bold; border-top: 1px dashed black; margin-top: 2px; font-size: 14px; }
+            /* Sticker size 50mm x 25mm settings */
+            @page { 
+              size: 50mm 25mm; 
+              margin: 0; 
+            }
+            html, body { 
+              margin: 0; 
+              padding: 0; 
+              width: 50mm; 
+              height: 25mm; 
+              overflow: hidden;
+              background-color: white;
+            }
+            .sticker-container { 
+              width: 50mm; 
+              height: 25mm; 
+              display: flex; 
+              flex-direction: column; 
+              align-items: center; 
+              justify-content: center; 
+              text-align: center;
+              box-sizing: border-box;
+              padding: 1.5mm;
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            .biz-name { 
+              font-size: 9px; 
+              font-weight: 800; 
+              text-transform: uppercase;
+              margin-bottom: 0.5mm;
+              white-space: nowrap;
+            }
+            .item-name { 
+              font-size: 7.5px; 
+              margin-bottom: 0.5mm;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              width: 100%;
+            }
+            #barcode { 
+              max-width: 100%; 
+              height: 11mm; /* Height eka limit kala single page fit wenna */
+            }
+            .price-tag { 
+              font-weight: 900; 
+              border-top: 1px dashed #000; 
+              margin-top: 0.5mm; 
+              font-size: 13px; 
+              width: 100%;
+              padding-top: 0.5mm;
+            }
           </style>
         </head>
         <body>
-          <div class="sticker">
-            <div style="font-size: 10px; font-weight: bold;">${businessName}</div>
-            <div style="font-size: 8px;">${product.name}</div>
+          <div class="sticker-container">
+            <div class="biz-name">${businessName}</div>
+            <div class="item-name">${product.name}</div>
             <svg id="barcode"></svg>
-            <div class="price">Rs.${Number(product.price).toLocaleString()}</div>
+            <div class="price-tag">Rs.${Number(product.price).toLocaleString()}</div>
           </div>
           <script>
             JsBarcode("#barcode", "${product.code}", {
               format: "CODE128",
-              width: 1.5,
-              height: 40,
+              width: 1.1,
+              height: 30,
               displayValue: true,
-              fontSize: 12
+              fontSize: 10,
+              margin: 0
             });
             setTimeout(() => {
               window.print();
               window.close();
-            }, 500);
+            }, 600);
           </script>
         </body>
       </html>
@@ -99,8 +148,8 @@ const Inventory = () => {
       else await axios.post(API_URL, payload);
       setShowModal(false);
       fetchProducts();
-      toast.success("Saved!");
-    } catch (err) { toast.error("Error!"); }
+      toast.success("Inventory Updated!");
+    } catch (err) { toast.error("Error saving!"); }
   };
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -110,11 +159,11 @@ const Inventory = () => {
       <Sidebar />
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="flex justify-between items-center mb-10">
-          <h1 className="text-3xl font-black uppercase tracking-tight">Stock <span className="text-indigo-600">Inventory</span></h1>
+          <h1 className="text-3xl font-black uppercase tracking-tight italic">Stock <span className="text-indigo-600">Inventory</span></h1>
           <div className="flex gap-3">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-              <input type="text" placeholder="Search..." className="pl-12 pr-4 py-3 rounded-2xl bg-white border outline-none font-bold text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input type="text" placeholder="Search..." className="pl-12 pr-4 py-3 rounded-2xl bg-white border border-slate-100 outline-none font-bold text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <button onClick={() => openModal()} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs shadow-lg">Add Item</button>
           </div>
@@ -122,8 +171,8 @@ const Inventory = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {filteredProducts.map((p) => (
-            <div key={p._id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border group relative hover:shadow-xl transition-all">
-              {p.discount > 0 && <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-black tracking-tighter shadow-md"><Tag size={10}/> {p.discount}% OFF</div>}
+            <div key={p._id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 group relative hover:shadow-xl transition-all">
+              {p.discount > 0 && <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-md"><Tag size={10}/> {p.discount}% OFF</div>}
               <div className="flex justify-between mb-4">
                 <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600"><Package size={22}/></div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -134,14 +183,15 @@ const Inventory = () => {
               </div>
               <h3 className="font-black uppercase text-sm truncate">{p.name}</h3>
               <p className="text-[10px] text-slate-300 font-bold mt-1 tracking-widest">{p.code}</p>
-              <div className="mt-6 flex justify-between items-end border-t pt-4">
+              <div className="mt-6 flex justify-between items-end border-t pt-4 border-slate-50">
                 <div><p className="text-[9px] text-slate-400 font-black uppercase">Price</p><p className="text-indigo-600 font-black text-lg">Rs.{p.price.toLocaleString()}</p></div>
-                <div className="text-right"><p className="text-[9px] text-slate-400 font-black uppercase">Qty</p><p className="text-xs font-black text-slate-400">{p.qty} PCS</p></div>
+                <div className="text-right"><p className="text-[9px] text-slate-400 font-black uppercase">Stock</p><p className="text-xs font-black text-slate-400">{p.qty} PCS</p></div>
               </div>
             </div>
           ))}
         </div>
 
+        {/* Product Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
             <div className="bg-white w-full max-w-md rounded-[3.5rem] p-10 relative shadow-2xl">
@@ -149,12 +199,12 @@ const Inventory = () => {
               <h2 className="text-2xl font-black uppercase mb-8 italic text-indigo-600">Product Entry</h2>
               <form ref={formRef} onKeyDown={handleKeyDown} onSubmit={handleSubmit} className="space-y-4">
                 <div className="bg-slate-50 p-4 rounded-2xl border">
-                  <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1 mb-1 italic"><Hash size={10}/> Product ID</label>
+                  <label className="text-[9px] font-black uppercase text-slate-400 italic">Product ID (Unique)</label>
                   <input type="text" readOnly className="w-full bg-transparent font-black text-sm outline-none text-indigo-400 cursor-not-allowed" value={formData.code} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Product Name</label>
-                  <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border focus:border-indigo-600" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Item Name" required />
+                  <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border focus:border-indigo-600 transition-all" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Item Name" required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -170,7 +220,7 @@ const Inventory = () => {
                   <label className="text-[10px] font-black text-emerald-600 uppercase ml-2 italic">Discount (%)</label>
                   <input type="number" onWheel={(e) => (e.target as HTMLInputElement).blur()} className="w-full p-4 bg-emerald-50 rounded-2xl outline-none font-bold border border-emerald-100 focus:border-emerald-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={formData.discount} onChange={(e) => setFormData({...formData, discount: e.target.value})} placeholder="0" />
                 </div>
-                <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-xl hover:bg-indigo-700 mt-4">Save Product</button>
+                <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-xl hover:bg-indigo-700 transition-all mt-4">Save Item</button>
               </form>
             </div>
           </div>
