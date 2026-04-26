@@ -21,20 +21,21 @@ const connectDB = async () => {
   } catch (err) { console.error("MongoDB Connection Error:", err); }
 };
 
-// --- MODELS (Data Isolation Feature Added) ---
+// --- MODELS ---
 
-// Hama Business ekatama unique ID ekak thiyenawa (MongoDB _id)
-const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
+const BusinessSchema = new mongoose.Schema({
   name: String, 
   email: { type: String, unique: true }, 
   password: { type: String, required: true }, 
   role: { type: String, default: 'Admin' }, 
   whatsapp: String,
   address: String,
-  logo: String
-}));
+  logo: String,
+  businessId: { type: String, required: true } // Shop Isolation ekata
+});
 
-// Products walata businessId field eka ekathu kara
+const Business = mongoose.models.Business || mongoose.model('Business', BusinessSchema);
+
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
   name: String, 
   code: String, 
@@ -44,7 +45,6 @@ const Product = mongoose.models.Product || mongoose.model('Product', new mongoos
   businessId: { type: String, required: true } 
 }, { timestamps: true }));
 
-// Invoices walata businessId field eka ekathu kara
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
   invoiceId: String, 
   items: Array, 
@@ -58,7 +58,7 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 
 // --- ROUTES ---
 
-// 1. Auth Routes
+// 1. AUTH ROUTES
 app.post('/api/auth/register', async (req, res) => {
   await connectDB();
   try {
@@ -79,10 +79,47 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2. Products (Business ID eka anuwa filter wenawa)
+// **DELETE BUSINESS (DANGER ZONE)**
+app.post('/api/auth/delete-business', async (req, res) => {
+  await connectDB();
+  const { businessId, password, adminId } = req.body;
+  try {
+    const admin = await Business.findById(adminId);
+    if (!admin || admin.password !== password) {
+      return res.status(401).json({ success: false, message: "Incorrect Admin Password!" });
+    }
+
+    // Delete everything related to this business
+    await Product.deleteMany({ businessId });
+    await Invoice.deleteMany({ businessId });
+    await Business.deleteMany({ businessId });
+
+    res.json({ success: true, message: "Account deleted permanently" });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
+// 2. DASHBOARD STATS (404 Error Fix)
+app.get('/api/dashboard/stats', async (req, res) => {
+  await connectDB();
+  const bid = req.query.businessId;
+  if (!bid) return res.status(400).json({ message: "Business ID required" });
+
+  try {
+    const products = await Product.countDocuments({ businessId: bid });
+    const invoices = await Invoice.countDocuments({ businessId: bid });
+    
+    // Total Sales Calculation
+    const invoiceData = await Invoice.find({ businessId: bid });
+    const totalSales = invoiceData.reduce((acc, inv) => acc + (inv.total || 0), 0);
+
+    res.json({ products, invoices, totalSales });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 3. PRODUCTS
 app.get('/api/products', async (req, res) => {
   await connectDB();
-  const bid = req.headers['business-id']; 
+  const bid = req.query.businessId || req.headers['business-id']; 
   if (!bid) return res.status(400).json({ message: "Business ID required" });
   res.json(await Product.find({ businessId: bid }));
 });
@@ -112,10 +149,10 @@ app.delete('/api/products/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// 3. Invoices (Business ID eka anuwa filter wenawa)
+// 4. INVOICES
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
-  const bid = req.headers['business-id'];
+  const bid = req.query.businessId || req.headers['business-id'];
   if (!bid) return res.status(400).json({ message: "Business ID required" });
   res.json(await Invoice.find({ businessId: bid }).sort({ createdAt: -1 }));
 });
@@ -124,7 +161,7 @@ app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const newInvoice = await Invoice.create(req.body);
-    // Stock Update Logic
+    // Stock Update
     for (const item of req.body.items) {
       await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
     }
@@ -140,12 +177,23 @@ app.delete('/api/invoices/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// 4. Users/Staff Management (Admin ta pamanai)
+// 5. STAFF MANAGEMENT
 app.get('/api/users', async (req, res) => {
   await connectDB();
-  res.json(await Business.find());
+  const bid = req.query.businessId;
+  if (!bid) return res.status(400).json({ message: "Business ID required" });
+  res.json(await Business.find({ businessId: bid }));
 });
 
-// Port configuration
+app.post('/api/users/add', async (req, res) => {
+  await connectDB();
+  try {
+    const newUser = new Business(req.body);
+    await newUser.save();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+// PORT
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
