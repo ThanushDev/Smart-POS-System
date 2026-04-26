@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
-import { Plus, Search, Edit3, Trash2, Package, X, Percent, Printer } from 'lucide-react';
+import { Plus, Search, Edit3, Package, X } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -21,7 +21,7 @@ const Inventory = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Auto-generate Unique Product Code
+  // Auto-generate Unique Product Code
   const generateProductCode = () => {
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -37,12 +37,17 @@ const Inventory = () => {
 
   useEffect(() => { if(user.businessId) fetchProducts(); }, [user.businessId]);
 
-  // Keyboard Shortcuts for Main Screen
+  // Keyboard Shortcuts - Browser default block kireema
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
+      // Ctrl + N ho Cmd + N (New Product)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault(); // Browser eke aluth window ekak open wena eka nawatthanawa
         openModal();
+      }
+      // Escape gahapu gaman modal eka close wenna
+      if (e.key === 'Escape') {
+        setShowModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -57,15 +62,14 @@ const Inventory = () => {
       setEditingProduct(null);
       setFormData({ 
         name: '', 
-        code: generateProductCode(), // Auto-fill on open
+        code: generateProductCode(),
         price: '', 
         qty: '', 
         discount: '0' 
       });
     }
     setShowModal(true);
-    // Focus Name field after modal opens
-    setTimeout(() => nameInputRef.current?.focus(), 100);
+    setTimeout(() => nameInputRef.current?.focus(), 150);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,10 +78,10 @@ const Inventory = () => {
       const payload = { ...formData, businessId: user.businessId };
       if (editingProduct) {
         await axios.put(`/api/products/${editingProduct._id}`, payload);
-        toast.success("Updated!");
+        toast.success("Updated Successfully");
       } else {
         await axios.post('/api/products', payload);
-        toast.success("Added!");
+        toast.success("Product Added");
       }
       setShowModal(false);
       fetchProducts();
@@ -90,15 +94,14 @@ const Inventory = () => {
       <main className="flex-1 p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-black italic uppercase text-slate-800">Inventory</h1>
-            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-[0.2em]">Press Ctrl+N to add new</p>
+            <h1 className="text-3xl font-black italic uppercase text-slate-800 tracking-tighter">Inventory</h1>
           </div>
           <div className="flex gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
               <input 
                 type="text" 
-                placeholder="Search..." 
+                placeholder="Search inventory..." 
                 className="pl-10 pr-4 py-2.5 bg-white rounded-xl outline-none shadow-sm font-bold text-sm w-64 border border-transparent focus:border-indigo-300 transition-all" 
                 onChange={(e) => setSearchTerm(e.target.value)} 
               />
@@ -107,7 +110,7 @@ const Inventory = () => {
               onClick={() => openModal()} 
               className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg hover:bg-indigo-700 transition-all uppercase text-xs"
             >
-              <Plus size={18}/> New Product
+              <Plus size={18}/> Add New
             </button>
           </div>
         </header>
@@ -117,9 +120,7 @@ const Inventory = () => {
             <div key={p._id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 group relative hover:shadow-xl transition-all">
               <div className="flex justify-between items-start mb-4">
                 <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600"><Package size={24} /></div>
-                <div className="flex gap-1">
-                   <button onClick={() => openModal(p)} className="p-2 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit3 size={18}/></button>
-                </div>
+                <button onClick={() => openModal(p)} className="p-2 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit3 size={18}/></button>
               </div>
               <h3 className="font-black uppercase text-sm mb-1 truncate text-slate-800 italic">{p.name}</h3>
               <p className="text-[10px] font-bold text-indigo-400 mb-3 tracking-widest">{p.code}</p>
@@ -138,10 +139,10 @@ const Inventory = () => {
         </div>
       </main>
 
-      {/* KEYBOARD OPTIMIZED MODAL */}
+      {/* INVISIBLE DISCOUNT & KEYBOARD FRIENDLY MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative border border-white/20 animate-in fade-in zoom-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative border border-white/20">
             <button onClick={() => setShowModal(false)} className="absolute top-8 right-8 text-slate-300 hover:text-slate-600"><X size={24}/></button>
             
             <h2 className="text-xl font-black italic uppercase mb-8 text-slate-800">
@@ -149,19 +150,12 @@ const Inventory = () => {
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Auto Generated Code - READ ONLY */}
-              <div className="opacity-60">
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 italic">Product Code (System Generated)</label>
-                <input 
-                  type="text" 
-                  className="w-full p-4 bg-slate-100 rounded-2xl font-black text-xs tracking-[0.2em] outline-none cursor-not-allowed" 
-                  value={formData.code} 
-                  readOnly 
-                />
+              <div className="hidden"> {/* Product Code Hidden but present for logic */}
+                <input type="text" value={formData.code} readOnly />
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Product Name *</label>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Product Name</label>
                 <input 
                   ref={nameInputRef}
                   type="text" 
@@ -174,7 +168,7 @@ const Inventory = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Unit Price *</label>
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Unit Price (Rs.)</label>
                   <input 
                     type="number" 
                     step="any"
@@ -185,7 +179,7 @@ const Inventory = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Initial Qty *</label>
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Stock Quantity</label>
                   <input 
                     type="number" 
                     className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm border-2 border-transparent focus:border-indigo-500 transition-all" 
@@ -196,24 +190,19 @@ const Inventory = () => {
                 </div>
               </div>
 
-              <div className="p-5 bg-emerald-50 rounded-[2rem] border border-emerald-100">
-                <label className="text-[10px] font-black uppercase text-emerald-600 flex items-center gap-1 mb-1">
-                   Discount % (Keyboard Input)
-                </label>
-                <input 
-                  type="number" 
-                  step="any"
-                  className="w-full bg-transparent outline-none font-black text-emerald-700 text-2xl" 
-                  value={formData.discount} 
-                  onChange={(e) => setFormData({...formData, discount: e.target.value})} 
-                />
-              </div>
+              {/* DISCOUNT FIELD IS NOW COMPLETELY HIDDEN BUT TAB-ACCESSIBLE IF NEEDED */}
+              <input 
+                type="number" 
+                className="sr-only" // Hidden from view, only for logic
+                value={formData.discount} 
+                onChange={(e) => setFormData({...formData, discount: e.target.value})} 
+              />
 
               <button 
                 type="submit" 
                 className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
               >
-                Press Enter to Save
+                Confirm Changes
               </button>
             </form>
           </div>
