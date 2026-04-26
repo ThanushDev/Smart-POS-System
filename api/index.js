@@ -14,30 +14,23 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 const MONGODB_URI = process.env.MONGODB_URI;
-let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) return;
+  if (mongoose.connection.readyState >= 1) return;
   try {
-    const db = await mongoose.connect(MONGODB_URI);
-    isConnected = db.connections[0].readyState === 1;
-    console.log("MongoDB Connected Successfully");
-  } catch (err) { console.error("MongoDB Connection Error:", err); }
+    await mongoose.connect(MONGODB_URI);
+    console.log("MongoDB Connected");
+  } catch (err) { console.error("DB Error:", err); }
 };
 
-// --- SCHEMAS ---
+// --- MODELS ---
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
   name: String, email: { type: String, unique: true }, password: { type: String }, 
-  role: { type: String, default: 'Admin' }, whatsapp: String, address: String, logo: String, businessId: String 
+  role: { type: String, default: 'Admin' }, businessId: String 
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, 
-  code: String, 
-  price: Number, 
-  qty: Number, 
-  discount: { type: Number, default: 0 }, 
-  businessId: { type: String, required: true } 
+  name: String, code: String, price: Number, qty: Number, discount: { type: Number, default: 0 }, businessId: String 
 }, { timestamps: true }));
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
@@ -45,36 +38,39 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 }, { timestamps: true }));
 
 // --- ROUTES ---
+
+// Login Route
+app.post('/api/auth/login', async (req, res) => {
+  await connectDB();
+  try {
+    const { username, password } = req.body;
+    const user = await Business.findOne({ email: username, password: password });
+    if (user) res.json({ success: true, user });
+    else res.status(401).json({ success: false, message: "Invalid Credentials" });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Product Routes
 app.get('/api/products', async (req, res) => {
   await connectDB();
   const bid = req.query.businessId;
-  res.json(await Product.find({ businessId: bid }).sort({ createdAt: -1 }));
+  const products = await Product.find({ businessId: bid }).sort({ createdAt: -1 });
+  res.json(products);
 });
 
 app.post('/api/products', async (req, res) => {
   await connectDB();
-  try {
-    const newProduct = new Product(req.body);
-    await newProduct.save();
-    io.emit('update-sync');
-    res.json(newProduct);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  const newProduct = new Product(req.body);
+  await newProduct.save();
+  io.emit('update-sync');
+  res.json(newProduct);
 });
 
 app.put('/api/products/:id', async (req, res) => {
   await connectDB();
-  try {
-    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    io.emit('update-sync');
-    res.json(updated);
-  } catch (err) { res.status(400).json({ error: err.message }); }
-});
-
-app.delete('/api/products/:id', async (req, res) => {
-  await connectDB();
-  await Product.findByIdAndDelete(req.params.id);
+  const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
   io.emit('update-sync');
-  res.json({ success: true });
+  res.json(updated);
 });
 
 app.post('/api/invoices', async (req, res) => {
@@ -88,7 +84,9 @@ app.post('/api/invoices', async (req, res) => {
   res.json(inv);
 });
 
-// Auth & Stats routes... (keep your existing ones)
+app.get('/', (req, res) => res.send("DIGI SOLUTIONS API RUNNING"));
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server on ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on ${PORT}`));
+
+export default app;
