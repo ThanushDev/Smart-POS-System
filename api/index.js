@@ -13,116 +13,139 @@ const MONGODB_URI = process.env.MONGODB_URI;
 let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) return;
-  try {
-    const db = await mongoose.connect(MONGODB_URI);
-    isConnected = db.connections[0].readyState === 1;
-    console.log("MongoDB Connected Successfully");
-  } catch (err) { console.error("MongoDB Connection Error:", err); }
+  if (isConnected) return;
+  try {
+    const db = await mongoose.connect(MONGODB_URI);
+    isConnected = db.connections[0].readyState === 1;
+    console.log("MongoDB Connected Successfully");
+  } catch (err) { console.error("MongoDB Connection Error:", err); }
 };
 
-// --- MODELS ---
-// Business Model එකට address සහ logo එකත් ඇතුළත් කළා
+// --- MODELS (Data Isolation Feature Added) ---
+
+// Hama Business ekatama unique ID ekak thiyenawa (MongoDB _id)
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, 
-  email: { type: String, unique: true }, 
-  password: { type: String, required: true }, 
-  role: { type: String, default: 'Admin' }, 
-  whatsapp: String, 
-  address: String,
-  logo: String,
-  businessId: String
+  name: String, 
+  email: { type: String, unique: true }, 
+  password: { type: String, required: true }, 
+  role: { type: String, default: 'Admin' }, 
+  whatsapp: String,
+  address: String,
+  logo: String
 }));
 
+// Products walata businessId field eka ekathu kara
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, code: String, price: Number, qty: Number, discount: { type: Number, default: 0 } 
+  name: String, 
+  code: String, 
+  price: Number, 
+  qty: Number, 
+  discount: { type: Number, default: 0 },
+  businessId: { type: String, required: true } 
 }, { timestamps: true }));
 
+// Invoices walata businessId field eka ekathu kara
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, items: Array, total: Number, discountTotal: Number, cashier: String, date: String, time: String
+  invoiceId: String, 
+  items: Array, 
+  total: Number, 
+  discountTotal: Number, 
+  cashier: String,
+  date: String,
+  time: String,
+  businessId: { type: String, required: true }
 }, { timestamps: true }));
 
-// --- AUTH ROUTES ---
+// --- ROUTES ---
 
-// 1. REGISTER (මේක තමයි අලුතින්ම එකතු කළේ)
+// 1. Auth Routes
 app.post('/api/auth/register', async (req, res) => {
-  await connectDB();
-  try {
-    const { email } = req.body;
-    const existing = await Business.findOne({ email });
-    if (existing) return res.status(400).json({ success: false, message: "Email already exists" });
-
-    const newUser = await Business.create(req.body);
-    res.status(201).json({ success: true, user: newUser });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Registration failed: " + err.message });
-  }
+  await connectDB();
+  try {
+    const newUser = new Business(req.body);
+    await newUser.save();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// 2. LOGIN (Username/Email mismatch එක මෙතනින් fix කළා)
 app.post('/api/auth/login', async (req, res) => {
-  await connectDB();
-  try {
-    const { username, password } = req.body; 
-    // Frontend එකෙන් එන 'username' කියන එක Backend එකේ 'email' එකට match කරනවා
-    const user = await Business.findOne({ email: username, password: password });
-    
-    if (user) {
-      res.json({ success: true, user });
-    } else {
-      res.status(401).json({ success: false, message: "Invalid Email or Password" });
-    }
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Login Error" });
-  }
+  await connectDB();
+  const { username, password } = req.body;
+  const user = await Business.findOne({ email: username, password: password });
+  if (user) {
+    res.json({ success: true, user });
+  } else {
+    res.status(401).json({ success: false, message: "Invalid Credentials" });
+  }
 });
 
-// --- PRODUCT ROUTES ---
+// 2. Products (Business ID eka anuwa filter wenawa)
 app.get('/api/products', async (req, res) => {
-  await connectDB();
-  res.json(await Product.find());
+  await connectDB();
+  const bid = req.headers['business-id']; 
+  if (!bid) return res.status(400).json({ message: "Business ID required" });
+  res.json(await Product.find({ businessId: bid }));
 });
 
-app.post('/api/products', async (req, res) => {
-  await connectDB();
-  try {
-    const product = await Product.create(req.body);
-    res.status(201).json(product);
-  } catch (err) { res.status(500).json({ success: false }); }
+app.post('/api/products/add', async (req, res) => {
+  await connectDB();
+  try {
+    const newProduct = new Product(req.body);
+    await newProduct.save();
+    res.status(201).json(newProduct);
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.put('/api/products/:id', async (req, res) => {
-  await connectDB();
-  try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(product);
-  } catch (err) { res.status(500).json({ success: false }); }
+  await connectDB();
+  try {
+    await Product.findByIdAndUpdate(req.params.id, req.body);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
 app.delete('/api/products/:id', async (req, res) => {
-  await connectDB();
-  try {
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (err) { res.status(500).json({ success: false }); }
+  await connectDB();
+  try {
+    await Product.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
-// --- INVOICE ROUTES ---
+// 3. Invoices (Business ID eka anuwa filter wenawa)
 app.get('/api/invoices', async (req, res) => {
-  await connectDB();
-  res.json(await Invoice.find().sort({ createdAt: -1 }));
+  await connectDB();
+  const bid = req.headers['business-id'];
+  if (!bid) return res.status(400).json({ message: "Business ID required" });
+  res.json(await Invoice.find({ businessId: bid }).sort({ createdAt: -1 }));
 });
 
 app.post('/api/invoices', async (req, res) => {
-  await connectDB();
-  try {
-    const newInvoice = await Invoice.create(req.body);
-    // Stock එක අඩු කිරීම
-    for (const item of req.body.items) {
-      await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
-    }
-    res.status(201).json(newInvoice);
-  } catch (err) { res.status(500).json({ success: false }); }
+  await connectDB();
+  try {
+    const newInvoice = await Invoice.create(req.body);
+    // Stock Update Logic
+    for (const item of req.body.items) {
+      await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.quantity } });
+    }
+    res.status(201).json(newInvoice);
+  } catch (err) { res.status(500).json({ success: false }); }
 });
 
-export default app;
+app.delete('/api/invoices/:id', async (req, res) => {
+  await connectDB();
+  try {
+    await Invoice.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ success: false }); }
+});
+
+// 4. Users/Staff Management (Admin ta pamanai)
+app.get('/api/users', async (req, res) => {
+  await connectDB();
+  res.json(await Business.find());
+});
+
+// Port configuration
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
