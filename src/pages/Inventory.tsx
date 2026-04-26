@@ -15,7 +15,7 @@ const Inventory = () => {
     code: '', 
     price: '', 
     qty: '', 
-    discount: '0' 
+    discount: '' 
   });
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -129,7 +129,7 @@ const Inventory = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-2">
                 <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1 mb-1 italic">
-                  <Hash size={10}/> Auto-Generated Product Code
+                  <Hash size={10}/> Product Code
                 </label>
                 <input type="text" className="w-full bg-transparent font-black text-xs tracking-[0.2em] outline-none text-indigo-400" value={formData.code} readOnly tabIndex={-1} />
               </div>
