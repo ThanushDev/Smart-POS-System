@@ -20,15 +20,14 @@ const Inventory = () => {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   
-  // Refs for Keyboard Focus Navigation
+  // Refs for Advanced Keyboard Navigation
   const nameRef = useRef<HTMLInputElement>(null);
   const priceRef = useRef<HTMLInputElement>(null);
   const qtyRef = useRef<HTMLInputElement>(null);
+  const discountRef = useRef<HTMLInputElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
 
-  const generateProductCode = () => {
-    return `PRD-${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 100)}`;
-  };
+  const generateProductCode = () => `PRD-${Date.now().toString().slice(-6)}`;
 
   const fetchProducts = async () => {
     try {
@@ -39,7 +38,7 @@ const Inventory = () => {
 
   useEffect(() => { if(user.businessId) fetchProducts(); }, [user.businessId]);
 
-  // Global Keyboard Shortcuts
+  // Global Key Listener (Ctrl+N to New Product)
   useEffect(() => {
     const handleGlobalKeys = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
@@ -63,11 +62,14 @@ const Inventory = () => {
     setTimeout(() => nameRef.current?.focus(), 100);
   };
 
-  // Enter key eken next field ekata yana logic eka
-  const handleKeyDown = (e: React.KeyboardEvent, nextRef: React.RefObject<any>) => {
-    if (e.key === 'Enter') {
+  // Advanced Navigation Logic (Arrow Keys & Enter)
+  const handleKeyDown = (e: React.KeyboardEvent, prevRef: any, nextRef: any) => {
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
       e.preventDefault();
       nextRef.current?.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      prevRef.current?.focus();
     }
   };
 
@@ -77,7 +79,7 @@ const Inventory = () => {
       const payload = { ...formData, businessId: user.businessId };
       if (editingProduct) {
         await axios.put(`/api/products/${editingProduct._id}`, payload);
-        toast.success("Product Updated");
+        toast.success("Updated Successfully");
       } else {
         await axios.post('/api/products', payload);
         toast.success("Product Added");
@@ -92,9 +94,9 @@ const Inventory = () => {
       <Sidebar />
       <main className="flex-1 p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-10">
-          <h1 className="text-3xl font-black italic uppercase text-slate-800">Inventory <span className="text-indigo-600">Pro</span></h1>
+          <h1 className="text-3xl font-black italic uppercase text-slate-800">Inventory <span className="text-indigo-600 tracking-tighter">Manager</span></h1>
           <button onClick={() => openModal()} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:scale-105 transition-all uppercase text-xs">
-            <Plus size={18}/> New (Ctrl+N)
+            <Plus size={18}/> New Product
           </button>
         </header>
 
@@ -102,34 +104,34 @@ const Inventory = () => {
           {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).map((p) => (
             <div key={p._id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
               <div className="flex justify-between items-center mb-4">
-                <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600"><Package size={20} /></div>
+                <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600"><Package size={20} /></div>
                 <button onClick={() => openModal(p)} className="p-2 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit3 size={18}/></button>
               </div>
               <h3 className="font-black uppercase text-sm truncate text-slate-800 italic">{p.name}</h3>
               <p className="text-[10px] font-bold text-slate-400 mt-1">{p.code}</p>
-              <div className="flex justify-between items-end mt-6 pt-4 border-t border-slate-50">
-                <p className="text-lg font-black text-indigo-600 italic">Rs.{p.price}</p>
-                <span className="text-xs font-black px-3 py-1 bg-slate-100 rounded-full">{p.qty} left</span>
+              <div className="flex justify-between items-end mt-6 pt-4 border-t border-slate-50 font-black italic">
+                <p className="text-lg text-indigo-600">Rs.{p.price}</p>
+                <span className="text-xs px-3 py-1 bg-slate-100 rounded-full">{p.qty}</span>
               </div>
             </div>
           ))}
         </div>
       </main>
 
+      {/* KEYBOARD-ONLY MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white w-full max-w-md rounded-[3.5rem] p-10 shadow-2xl relative">
-            <button onClick={() => setShowModal(false)} className="absolute top-10 right-10 text-slate-300 hover:text-rose-500 transition-colors"><X size={24}/></button>
+          <div className="bg-white w-full max-w-md rounded-[3.5rem] p-10 shadow-2xl relative animate-in zoom-in duration-150">
+            <button onClick={() => setShowModal(false)} className="absolute top-10 right-10 text-slate-300 hover:text-rose-500"><X size={24}/></button>
             
-            <h2 className="text-2xl font-black italic uppercase mb-8">Product <span className="text-indigo-600">Details</span></h2>
+            <h2 className="text-2xl font-black italic uppercase mb-8">Quick <span className="text-indigo-600">Entry</span></h2>
             
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Product Code - Auto Visible but ReadOnly */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1 mb-1">
-                  <Hash size={10}/> Auto Generated Code
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-2">
+                <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1 mb-1 italic">
+                  <Hash size={10}/> Auto-Generated Product Code
                 </label>
-                <input type="text" className="w-full bg-transparent font-black text-xs tracking-widest outline-none text-indigo-400" value={formData.code} readOnly />
+                <input type="text" className="w-full bg-transparent font-black text-xs tracking-[0.2em] outline-none text-indigo-400" value={formData.code} readOnly tabIndex={-1} />
               </div>
 
               <div>
@@ -137,10 +139,10 @@ const Inventory = () => {
                 <input 
                   ref={nameRef}
                   type="text" 
-                  className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm border-2 border-transparent focus:border-indigo-500" 
+                  className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm border-2 border-transparent focus:border-indigo-500 transition-all" 
                   value={formData.name} 
                   onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                  onKeyDown={(e) => handleKeyDown(e, priceRef)}
+                  onKeyDown={(e) => handleKeyDown(e, nameRef, priceRef)}
                   required 
                 />
               </div>
@@ -152,10 +154,10 @@ const Inventory = () => {
                     ref={priceRef}
                     type="number" 
                     step="any"
-                    className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm border-2 border-transparent focus:border-indigo-500" 
+                    className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm border-2 border-transparent focus:border-indigo-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                     value={formData.price} 
                     onChange={(e) => setFormData({...formData, price: e.target.value})} 
-                    onKeyDown={(e) => handleKeyDown(e, qtyRef)}
+                    onKeyDown={(e) => handleKeyDown(e, nameRef, qtyRef)}
                     required 
                   />
                 </div>
@@ -164,32 +166,33 @@ const Inventory = () => {
                   <input 
                     ref={qtyRef}
                     type="number" 
-                    className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm border-2 border-transparent focus:border-indigo-500" 
+                    className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm border-2 border-transparent focus:border-indigo-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                     value={formData.qty} 
                     onChange={(e) => setFormData({...formData, qty: e.target.value})} 
-                    onKeyDown={(e) => handleKeyDown(e, submitRef)}
+                    onKeyDown={(e) => handleKeyDown(e, priceRef, discountRef)}
                     required 
                   />
                 </div>
               </div>
 
-              {/* Discount - Keep it simple and visible but easy to skip */}
-              <div className="p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100">
-                <label className="text-[10px] font-black uppercase text-indigo-600 mb-1 block">Default Discount %</label>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Discount %</label>
                 <input 
+                  ref={discountRef}
                   type="number" 
-                  className="w-full bg-transparent outline-none font-black text-indigo-700 text-xl" 
+                  className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm border-2 border-transparent focus:border-indigo-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                   value={formData.discount} 
                   onChange={(e) => setFormData({...formData, discount: e.target.value})} 
+                  onKeyDown={(e) => handleKeyDown(e, qtyRef, submitRef)}
                 />
               </div>
 
               <button 
                 ref={submitRef}
                 type="submit" 
-                className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all"
+                className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all mt-4"
               >
-                Save Product (Enter)
+                Press Enter to Save
               </button>
             </form>
           </div>
