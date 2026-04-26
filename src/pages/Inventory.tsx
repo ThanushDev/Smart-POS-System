@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
-import PrintableBarcode from '../components/PrintableBarcode';
-import { useReactToPrint } from 'react-to-print';
 import { Package, X, Printer, Edit3, Hash, Search, Trash2, Tag, Info } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -11,15 +9,13 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [selectedProductForPrint, setSelectedProductForPrint] = useState<any>(null);
   const [formData, setFormData] = useState({ name: '', code: '', price: '', qty: '', discount: '' });
 
-  const printRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const API_URL = "/api/products";
 
-  // Arrow Keys Navigation
+  // Navigation Logic (Arrow Keys)
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -39,20 +35,49 @@ const Inventory = () => {
 
   useEffect(() => { if (user.businessId) fetchProducts(); }, [user.businessId]);
 
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    onAfterPrint: () => setSelectedProductForPrint(null)
-  });
-
-  // Unique Trigger to solve blank issue
+  // --- STABLE CUSTOM PRINT LOGIC ---
   const triggerPrint = (product: any) => {
-    toast.info("Preparing sticker...", { autoClose: 1000 });
-    setSelectedProductForPrint(product);
+    const businessName = user.name || "DIGI SOLUTIONS";
+    const printWindow = window.open('', '_blank', 'width=600,height=600');
     
-    // Barcode draw wenna thawa tikk welawak dila, dialog eka open karanawa
-    setTimeout(() => {
-      handlePrint();
-    }, 1500); 
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Barcode</title>
+          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+          <style>
+            @page { size: 50mm 25mm; margin: 0; }
+            body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; }
+            .sticker { width: 50mm; height: 25mm; padding: 5px; text-align: center; box-sizing: border-box; }
+            .price { font-weight: bold; border-top: 1px dashed black; margin-top: 2px; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="sticker">
+            <div style="font-size: 10px; font-weight: bold;">${businessName}</div>
+            <div style="font-size: 8px;">${product.name}</div>
+            <svg id="barcode"></svg>
+            <div class="price">Rs.${Number(product.price).toLocaleString()}</div>
+          </div>
+          <script>
+            JsBarcode("#barcode", "${product.code}", {
+              format: "CODE128",
+              width: 1.5,
+              height: 40,
+              displayValue: true,
+              fontSize: 12
+            });
+            setTimeout(() => {
+              window.print();
+              window.close();
+            }, 500);
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const openModal = (product: any = null) => {
@@ -117,31 +142,19 @@ const Inventory = () => {
           ))}
         </div>
 
-        {/* --- OFF-SCREEN PRINT AREA --- */}
-        <div style={{ position: 'fixed', left: '-5000px', top: 0 }}>
-          <div ref={printRef}>
-            {selectedProductForPrint && (
-              <PrintableBarcode 
-                product={selectedProductForPrint} 
-                businessName={user.name || "DIGI SOLUTIONS"} 
-              />
-            )}
-          </div>
-        </div>
-
         {showModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
             <div className="bg-white w-full max-w-md rounded-[3.5rem] p-10 relative shadow-2xl">
               <button onClick={() => setShowModal(false)} className="absolute top-8 right-8 text-slate-300"><X size={24}/></button>
-              <h2 className="text-2xl font-black uppercase mb-8 italic">Product <span className="text-indigo-600">Entry</span></h2>
+              <h2 className="text-2xl font-black uppercase mb-8 italic text-indigo-600">Product Entry</h2>
               <form ref={formRef} onKeyDown={handleKeyDown} onSubmit={handleSubmit} className="space-y-4">
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1 mb-1 italic"><Hash size={10}/> Unique ID (Read Only)</label>
+                <div className="bg-slate-50 p-4 rounded-2xl border">
+                  <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1 mb-1 italic"><Hash size={10}/> Product ID</label>
                   <input type="text" readOnly className="w-full bg-transparent font-black text-sm outline-none text-indigo-400 cursor-not-allowed" value={formData.code} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Product Name</label>
-                  <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-indigo-600 transition-all" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Item Name" required />
+                  <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border focus:border-indigo-600" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Item Name" required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -157,7 +170,7 @@ const Inventory = () => {
                   <label className="text-[10px] font-black text-emerald-600 uppercase ml-2 italic">Discount (%)</label>
                   <input type="number" onWheel={(e) => (e.target as HTMLInputElement).blur()} className="w-full p-4 bg-emerald-50 rounded-2xl outline-none font-bold border border-emerald-100 focus:border-emerald-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={formData.discount} onChange={(e) => setFormData({...formData, discount: e.target.value})} placeholder="0" />
                 </div>
-                <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-xl hover:bg-indigo-700 transition-all mt-4">Save Product</button>
+                <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-xl hover:bg-indigo-700 mt-4">Save Product</button>
               </form>
             </div>
           </div>
