@@ -4,7 +4,6 @@ import Barcode from 'react-barcode';
 const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, businessName }, ref) => {
   if (!product) return null;
 
-  // Calculate final selling price for the sticker
   const finalPrice = product.price - (product.price * (product.discount || 0) / 100);
 
   return (
@@ -26,6 +25,7 @@ const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, busin
         </div>
 
         <div className="flex justify-center items-center w-full">
+          {/* Renderer eka SVG damma, print weddi kanne nathi wenna */}
           <Barcode 
             value={product.code || "000000"} 
             width={1.2} 
@@ -34,6 +34,7 @@ const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, busin
             margin={0}
             background="transparent"
             displayValue={true}
+            renderer="svg" 
           />
         </div>
 
