@@ -24,6 +24,9 @@ const Register = () => {
     setIsLoading(true);
     const formData = new FormData(e.target as HTMLFormElement);
     
+    // Unique Business ID (Isolation එකට අනිවාර්යයි)
+    const businessId = "BS-" + Math.random().toString(36).substr(2, 9).toUpperCase();
+
     const registrationData = {
       name: formData.get('businessName'),
       address: formData.get('address'),
@@ -31,6 +34,7 @@ const Register = () => {
       email: formData.get('email'),
       password: formData.get('password'),
       logo: logo,
+      businessId: businessId,
       role: 'Admin' 
     };
 
@@ -62,8 +66,6 @@ const Register = () => {
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          
-          {/* Logo Upload Section */}
           <div className="flex flex-col items-center mb-6">
             <label className="relative w-24 h-24 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:border-indigo-400 transition-all overflow-hidden group">
               {logo ? <img src={logo} alt="Logo" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-300 group-hover:text-indigo-400" size={28} />}
@@ -93,7 +95,6 @@ const Register = () => {
             <input name="email" type="email" required placeholder="Admin Email" className="w-full pl-14 pr-6 py-4 bg-slate-50 rounded-2xl outline-none font-bold text-sm focus:ring-2 ring-indigo-50" />
           </div>
 
-          {/* Password with View/Hide Toggle */}
           <div className="relative">
             <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
             <input 
