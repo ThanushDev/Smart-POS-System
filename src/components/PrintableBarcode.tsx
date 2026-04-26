@@ -1,20 +1,20 @@
 import React, { useEffect, useRef } from 'react';
 
 const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, businessName }, ref) => {
-  const barcodeRef = useRef<HTMLCanvasElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    // Barcode script eka dynamic load karagannawa install karanna bari nisa
+    // Barcode script eka dynamic load karanawa
     const script = document.createElement("script");
     script.src = "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js";
     script.async = true;
     script.onload = () => {
-      if (barcodeRef.current && product?.code) {
+      if (svgRef.current && product?.code) {
         // @ts-ignore
-        window.JsBarcode(barcodeRef.current, product.code, {
+        window.JsBarcode(svgRef.current, product.code, {
           format: "CODE128",
           width: 2,
-          height: 60,
+          height: 50,
           displayValue: true,
           fontSize: 14,
           margin: 0
@@ -22,7 +22,6 @@ const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, busin
       }
     };
     document.body.appendChild(script);
-    
     return () => { document.body.removeChild(script); };
   }, [product]);
 
@@ -34,29 +33,39 @@ const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, busin
     <div 
       ref={ref} 
       className="bg-white text-black p-2 flex flex-col items-center justify-between"
-      style={{ width: '50mm', height: '25mm', overflow: 'hidden' }}
+      style={{ 
+        width: '50mm', 
+        height: '25mm', 
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center'
+      }}
     >
       <style>{`
         @media print { 
           @page { size: 50mm 25mm; margin: 0; } 
-          body { -webkit-print-color-adjust: exact; margin: 0; }
+          body { -webkit-print-color-adjust: exact; margin: 0 !important; padding: 0 !important; }
         }
       `}</style>
 
-      <div className="text-[10px] font-black uppercase text-center w-full leading-none">
+      {/* Business Name */}
+      <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', textAlign: 'center', width: '100%', lineHeight: '1' }}>
         {businessName}
       </div>
 
-      <div className="text-[8px] font-bold text-center truncate w-full italic uppercase">
+      {/* Product Name */}
+      <div style={{ fontSize: '8px', fontWeight: '700', textAlign: 'center', width: '100%', fontStyle: 'italic', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', marginTop: '2px' }}>
         {product.name}
       </div>
 
-      {/* Canvas eka use karanne barcode eka draw karanna */}
-      <div className="flex justify-center items-center w-full py-1">
-        <canvas ref={barcodeRef} style={{ maxWidth: '100%' }}></canvas>
+      {/* Barcode SVG */}
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '45px' }}>
+        <svg ref={svgRef}></svg>
       </div>
 
-      <div className="text-[12px] font-black italic border-t border-dashed border-black/20 w-full text-center pt-1 leading-none">
+      {/* Price */}
+      <div style={{ fontSize: '13px', fontWeight: '900', fontStyle: 'italic', borderTop: '1px dashed #000', width: '100%', textAlign: 'center', marginTop: '2px', paddingTop: '2px' }}>
         Rs.{Number(finalPrice).toLocaleString()}
       </div>
     </div>
