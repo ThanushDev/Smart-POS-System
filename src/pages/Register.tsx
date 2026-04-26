@@ -24,7 +24,8 @@ const Register = () => {
     setIsLoading(true);
     const formData = new FormData(e.target as HTMLFormElement);
     
-    // Unique Business ID (Isolation එකට අනිවාර්යයි)
+    // --- UNIQUE BUSINESS ID GENERATION ---
+    // මීට පස්සේ හැම shop එකකටම වෙනම ID එකක් හැදෙනවා (MongoDB වලට මේක යනවා)
     const businessId = "BS-" + Math.random().toString(36).substr(2, 9).toUpperCase();
 
     const registrationData = {
@@ -34,14 +35,15 @@ const Register = () => {
       email: formData.get('email'),
       password: formData.get('password'),
       logo: logo,
-      businessId: businessId,
+      businessId: businessId, 
       role: 'Admin' 
     };
 
     try {
+      // Backend එකට දත්ත යවනවා (MongoDB එකේ Save වෙනවා)
       const res = await axios.post('/api/auth/register', registrationData);
       if (res.data.success) {
-        toast.success("Business Account Created Successfully!");
+        toast.success("Business Registered Successfully!");
         setTimeout(() => navigate('/'), 2000);
       }
     } catch (err: any) {
@@ -66,6 +68,7 @@ const Register = () => {
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Logo Upload Section */}
           <div className="flex flex-col items-center mb-6">
             <label className="relative w-24 h-24 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:border-indigo-400 transition-all overflow-hidden group">
               {logo ? <img src={logo} alt="Logo" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-300 group-hover:text-indigo-400" size={28} />}
