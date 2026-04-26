@@ -21,7 +21,7 @@ const connectDB = async () => {
   } catch (err) { console.error("MongoDB Connection Error:", err); }
 };
 
-// --- MODELS ---
+// --- SCHEMAS ---
 const BusinessSchema = new mongoose.Schema({
   name: String, 
   email: { type: String, unique: true, required: true }, 
@@ -39,7 +39,6 @@ const Product = mongoose.models.Product || mongoose.model('Product', new mongoos
   code: String, 
   price: Number, 
   qty: Number, 
-  discount: { type: Number, default: 0 },
   businessId: { type: String, required: true } 
 }, { timestamps: true }));
 
@@ -47,16 +46,14 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
   invoiceId: String, 
   items: Array, 
   total: Number, 
-  discountTotal: Number, 
   cashier: String,
   date: String,
-  time: String,
   businessId: { type: String, required: true }
 }, { timestamps: true }));
 
 // --- ROUTES ---
 
-// DELETE BUSINESS (DANGER ZONE)
+// DELETE SHOP (Isolates and deletes only that shop's data)
 app.post('/api/auth/delete-business', async (req, res) => {
   await connectDB();
   const { businessId, password, adminId } = req.body;
@@ -65,7 +62,6 @@ app.post('/api/auth/delete-business', async (req, res) => {
     if (!admin || admin.password !== password) {
       return res.status(401).json({ success: false, message: "Incorrect Admin Password!" });
     }
-    // අදාළ Business ID එක තියෙන දත්ත විතරක් MongoDB එකෙන් අයින් කරනවා
     await Product.deleteMany({ businessId });
     await Invoice.deleteMany({ businessId });
     await Business.deleteMany({ businessId });
@@ -73,17 +69,28 @@ app.post('/api/auth/delete-business', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// DASHBOARD STATS
+// DASHBOARD STATS (Fixed 400 Error)
 app.get('/api/dashboard/stats', async (req, res) => {
   await connectDB();
   const bid = req.query.businessId;
-  if (!bid) return res.status(400).json({ message: "Business ID missing" });
+  if (!bid) return res.status(400).json({ message: "Business ID is missing" });
+
   try {
-    const products = await Product.countDocuments({ businessId: bid });
-    const invoices = await Invoice.countDocuments({ businessId: bid });
-    const invList = await Invoice.find({ businessId: bid });
-    const totalSales = invList.reduce((acc, inv) => acc + (inv.total || 0), 0);
-    res.json({ products, invoices, totalSales });
+    const today = new Date().toISOString().split('T')[0];
+    const products = await Product.find({ businessId: bid });
+    const invoices = await Invoice.find({ businessId: bid });
+    const todayInvoices = invoices.filter(inv => inv.date === today);
+
+    res.json({
+      todayBills: todayInvoices.length,
+      monthBills: invoices.length,
+      todayIncome: todayInvoices.reduce((acc, inv) => acc + inv.total, 0),
+      monthIncome: invoices.reduce((acc, inv) => acc + inv.total, 0),
+      totalProducts: products.length,
+      lowStockCount: products.filter(p => p.qty <= 5).length,
+      totalStockValue: products.reduce((acc, p) => acc + (p.price * p.qty), 0),
+      lowStockItems: products.filter(p => p.qty <= 5)
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -105,23 +112,7 @@ app.post('/api/auth/login', async (req, res) => {
   else res.status(401).json({ success: false, message: "Invalid Credentials" });
 });
 
-// PRODUCTS
-app.get('/api/products', async (req, res) => {
-  await connectDB();
-  const bid = req.query.businessId;
-  res.json(await Product.find({ businessId: bid }));
-});
-
-app.post('/api/products/add', async (req, res) => {
-  await connectDB();
-  try {
-    const newProduct = new Product(req.body);
-    await newProduct.save();
-    res.status(201).json(newProduct);
-  } catch (err) { res.status(500).json({ success: false }); }
-});
-
-// USERS/STAFF
+// USERS/STAFF (Fixed 400 Error)
 app.get('/api/users', async (req, res) => {
   await connectDB();
   const bid = req.query.businessId;
@@ -134,7 +125,7 @@ app.post('/api/users/add', async (req, res) => {
     const newUser = new Business(req.body);
     await newUser.save();
     res.json({ success: true });
-  } catch (err) { res.status(400).json({ success: false, message: "Email already exists or Invalid Data" }); }
+  } catch (err) { res.status(400).json({ success: false, message: "Error adding user" }); }
 });
 
 const PORT = process.env.PORT || 5000;
