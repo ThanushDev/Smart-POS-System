@@ -7,7 +7,8 @@ const ProductSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   discount: { type: Number, default: 0 },
   category: { type: String },
-  image: { type: String }
+  image: { type: String },
+  businessId: { type: String, required: true } // <--- MEKA ANIWARYAYEN ONNA
 }, { timestamps: true });
 
 export default mongoose.models.Product || mongoose.model('Product', ProductSchema);
