@@ -41,7 +41,7 @@ const Inventory = () => {
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    onBeforeGetContent: () => new Promise((resolve) => setTimeout(resolve, 1500)), // Barcode draw wenna welawa
+    onBeforeGetContent: () => new Promise((resolve) => setTimeout(resolve, 300)), // Barcode draw wenna welawa
     onAfterPrint: () => setSelectedProductForPrint(null)
   });
 
