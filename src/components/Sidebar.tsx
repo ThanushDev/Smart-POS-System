@@ -17,26 +17,37 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className=\"w-72 bg-white border-r border-slate-100 flex flex-col p-6 h-screen\">
-      <div className=\"mb-10 px-4\">
-        <h2 className=\"text-2xl font-black italic text-indigo-600 tracking-tighter\">DIGI <span className=\"text-slate-800\">POS</span></h2>
-        <p className=\"text-[10px] font-bold text-slate-400 uppercase tracking-widest\">Business Solutions</p>
+    <aside className="w-72 bg-white border-r border-slate-100 flex flex-col p-6 h-screen">
+      <div className="mb-10 px-4">
+        <h2 className="text-2xl font-black italic text-indigo-600 tracking-tighter">DIGI <span className="text-slate-800">POS</span></h2>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Business Solutions</p>
       </div>
-      <nav className=\"flex-1 space-y-2\">
-        {navItems.map((item) => (
-          <Link key={item.path} to={item.path}>
-            <div className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold text-sm transition-all ${location.pathname === item.path ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}>
-              <item.icon size={20} /> {item.label}
-            </div>
-          </Link>
-        ))}
+
+      <nav className="flex-1 space-y-2">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Link key={item.path} to={item.path} className="block">
+              <div className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold text-sm transition-all cursor-pointer ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:bg-slate-50 hover:text-indigo-600'}`}>
+                <item.icon size={20} />
+                {item.label}
+              </div>
+            </Link>
+          );
+        })}
       </nav>
-      <div className=\"pt-6 border-t border-slate-50\">
-        <button onClick={() => { localStorage.clear(); navigate('/'); }} className=\"w-full flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-sm text-rose-500 hover:bg-rose-50 transition-all\">
+
+      <div className="pt-6 mt-6 border-t border-slate-50">
+        <div className="bg-slate-50 p-4 rounded-2xl mb-4">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Active User</p>
+          <p className="text-sm font-black text-slate-800 italic uppercase">{user.name || 'Admin'}</p>
+        </div>
+        <button onClick={() => { localStorage.clear(); navigate('/'); }} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl font-black text-sm text-rose-500 hover:bg-rose-50 transition-all">
           <LogOut size={20} /> LOGOUT
         </button>
       </div>
     </aside>
   );
 };
+
 export default Sidebar;
