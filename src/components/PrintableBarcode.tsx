@@ -13,8 +13,8 @@ const PrintableBarcode = React.forwardRef<HTMLDivElement, any>(({ product, busin
           body { -webkit-print-color-adjust: exact; margin: 0; }
         }
       `}</style>
-      <div className="text-[9px] font-black uppercase text-center w-full leading-none">{businessName}</div>
-      <div className="text-[8px] font-bold text-center truncate w-full italic uppercase">{product.name}</div>
+      <div className="text-[9px] font-black uppercase text-center w-full leading-none">{businessName || "DIGI SOLUTIONS"}</div>
+      <div className="text-[8px] font-bold text-center truncate w-full italic uppercase mt-1">{product.name}</div>
       <div className="flex justify-center items-center w-full py-1">
         <Barcode value={product.code || "000000"} width={1.2} height={35} fontSize={10} margin={0} renderer="svg" />
       </div>
