@@ -13,20 +13,14 @@ const Inventory = () => {
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [selectedProductForPrint, setSelectedProductForPrint] = useState<any>(null);
   
-  // State eka empty strings damma default 0 nathi karanna
   const [formData, setFormData] = useState({ 
-    name: '', 
-    code: '', 
-    price: '', 
-    qty: '', 
-    discount: '' 
+    name: '', code: '', price: '', qty: '', discount: '' 
   });
 
   const printRef = useRef<HTMLDivElement>(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'Admin';
 
-  // Refs for Keyboard Navigation
   const nameRef = useRef<HTMLInputElement>(null);
   const priceRef = useRef<HTMLInputElement>(null);
   const qtyRef = useRef<HTMLInputElement>(null);
@@ -43,7 +37,7 @@ const Inventory = () => {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  // Print Logic Fix
+  // PRINTING FIX
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
     onAfterPrint: () => setSelectedProductForPrint(null)
@@ -51,10 +45,8 @@ const Inventory = () => {
 
   const triggerPrint = (product: any) => {
     setSelectedProductForPrint(product);
-    // Data render wenna delay ekak dila print karanawa
-    setTimeout(() => {
-      handlePrint();
-    }, 800);
+    // Component eka load wela SVG eka draw wenna 1 second denawa
+    setTimeout(() => { handlePrint(); }, 1000); 
   };
 
   const openModal = (product: any = null) => {
@@ -65,7 +57,7 @@ const Inventory = () => {
         code: product.code, 
         price: product.price.toString(), 
         qty: product.qty.toString(), 
-        discount: (product.discount || '').toString() 
+        discount: product.discount ? product.discount.toString() : '' 
       });
     } else {
       setEditingProduct(null);
@@ -88,13 +80,12 @@ const Inventory = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Empty fields 0 kiyala ganna logic eka
       const payload = { 
         name: formData.name,
         code: formData.code,
-        price: parseFloat(formData.price) || 0,
-        qty: parseFloat(formData.qty) || 0,
-        discount: formData.discount === '' ? 0 : parseFloat(formData.discount),
+        price: Number(formData.price) || 0,
+        qty: Number(formData.qty) || 0,
+        discount: formData.discount ? Number(formData.discount) : 0, // Discount eka nattam 0
         businessId: user.businessId 
       };
 
@@ -116,7 +107,7 @@ const Inventory = () => {
       <main className="flex-1 p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-10">
           <h1 className="text-3xl font-black italic uppercase text-slate-800 tracking-tighter">Stock <span className="text-indigo-600">Inventory</span></h1>
-          <button onClick={() => openModal()} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:bg-indigo-700 transition-all uppercase text-xs tracking-widest">
+          <button onClick={() => openModal()} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-xl hover:scale-105 transition-all uppercase text-xs tracking-widest">
             <Plus size={18}/> New Product
           </button>
         </header>
@@ -155,8 +146,12 @@ const Inventory = () => {
         </div>
       </main>
 
-      {/* Hidden Print Container */}
-      <div style={{ position: 'absolute', top: '-2000px', left: '-2000px' }}>
+      {/* PRINT CONTAINER FIX: 
+          Meka display:none kale naha. opacity-0 damma. 
+          Ethakota browser eka meka render karanawa (so Barcode library works), 
+          eth user-ta penne na. 
+      */}
+      <div className="absolute top-0 left-0 opacity-0 pointer-events-none -z-50">
         <div ref={printRef}>
           {selectedProductForPrint && (
             <PrintableBarcode product={selectedProductForPrint} businessName="DIGI SOLUTIONS" />
@@ -190,7 +185,7 @@ const Inventory = () => {
               </div>
               <div className="p-5 bg-emerald-50 rounded-3xl border border-emerald-100">
                 <label className="text-[10px] font-black text-emerald-600 uppercase mb-1 block italic">Discount % (Empty = No Discount)</label>
-                <input ref={discountRef} type="number" step="any" className="w-full bg-transparent outline-none font-black text-emerald-700 text-2xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={formData.discount} onChange={(e) => setFormData({...formData, discount: e.target.value})} onKeyDown={(e) => handleKeyNav(e, qtyRef, submitRef)} placeholder="0" />
+                <input ref={discountRef} type="number" step="any" className="w-full bg-transparent outline-none font-black text-emerald-700 text-2xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={formData.discount} onChange={(e) => setFormData({...formData, discount: e.target.value})} onKeyDown={(e) => handleKeyNav(e, qtyRef, submitRef)} placeholder="Leave empty for 0" />
               </div>
               <button ref={submitRef} type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-lg hover:bg-indigo-700 transition-all mt-4">Save (Enter)</button>
             </form>
