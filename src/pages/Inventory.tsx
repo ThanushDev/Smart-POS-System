@@ -17,7 +17,6 @@ const Inventory = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // Backend link eka (Relative path eka use karanne Vercel eke ekama domain nisa)
   const API_URL = "/api/products";
 
   const fetchProducts = async () => {
@@ -33,12 +32,13 @@ const Inventory = () => {
     if (user.businessId) fetchProducts();
   }, [user.businessId]);
 
-  // Barcode Print Logic with delay to prevent blank pages
+  // --- BARCODE PRINT LOGIC (FIXED DELAY) ---
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
     onBeforeGetContent: () => {
       return new Promise((resolve) => {
-        setTimeout(() => resolve(), 500);
+        // Script eka load wela barcode eka andinna 1.5s denawa
+        setTimeout(() => resolve(), 1500);
       });
     },
     onAfterPrint: () => setSelectedProductForPrint(null)
@@ -46,9 +46,10 @@ const Inventory = () => {
 
   const triggerPrint = (product: any) => {
     setSelectedProductForPrint(product);
+    // Modal eka athule content eka update wenna podi welawak diila print trigger karanawa
     setTimeout(() => {
       handlePrint();
-    }, 400);
+    }, 500);
   };
 
   const openModal = (product: any = null) => {
@@ -63,7 +64,6 @@ const Inventory = () => {
       });
     } else {
       setEditingProduct(null);
-      // Auto generate a SKU if it's a new product
       const autoSKU = `SKU-${Math.floor(100000 + Math.random() * 900000)}`;
       setFormData({ name: '', code: autoSKU, price: '', qty: '', discount: '0' });
     }
@@ -96,7 +96,7 @@ const Inventory = () => {
   };
 
   const deleteProduct = async (id: string) => {
-    if (window.confirm("Are you sure?")) {
+    if (window.confirm("Are you sure you want to delete this?")) {
       try {
         await axios.delete(`${API_URL}/${id}`);
         toast.success("Deleted!");
@@ -178,8 +178,8 @@ const Inventory = () => {
           ))}
         </div>
 
-        {/* Hidden Print Container */}
-        <div className="absolute top-0 left-0 opacity-0 pointer-events-none -z-50">
+        {/* --- HIDDEN PRINT AREA --- */}
+        <div className="fixed top-0 left-0 opacity-0 pointer-events-none" style={{ zIndex: -999 }}>
           <div ref={printRef}>
             {selectedProductForPrint && (
               <PrintableBarcode 
