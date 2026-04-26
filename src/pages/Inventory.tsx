@@ -5,7 +5,6 @@ import { useReactToPrint } from 'react-to-print';
 import { Plus, Search, Edit3, Trash2, Package, X, Percent, Printer } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import Barcode from 'react-barcode';
 
 const Inventory = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -16,160 +15,190 @@ const Inventory = () => {
   const [formData, setFormData] = useState({ name: '', code: '', price: 0, qty: 0, discount: 0 });
 
   const printRef = useRef<HTMLDivElement>(null);
+  
+  // LocalStorage එකෙන් current user ව ගන්නවා
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'Admin';
+  
+  // Data isolation සඳහා පාවිච්චි කරන ID එක
+  // Admin කෙනෙක් නම් එයාගේ _id එක, Staff කෙනෙක් නම් එයා අයිති businessId එක
+  const businessId = user.role === 'Admin' ? user._id : user.businessId;
 
+  // 1. Fetch Products (Filtered by Business ID)
   const fetchProducts = async () => {
     try {
-      const res = await axios.get('/api/products');
+      const res = await axios.get('/api/products', {
+        headers: { 'business-id': businessId } // Header එකෙන් ID එක යවනවා
+      });
       setProducts(res.data);
-    } catch (err) { toast.error("Failed to load inventory"); }
+    } catch (err) {
+      toast.error("Failed to load inventory");
+    }
   };
 
-  useEffect(() => { fetchProducts(); }, []);
-
-  // PRINT LOGIC FIX
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    onAfterPrint: () => setSelectedProductForPrint(null)
-  });
-
-  // selectedProduct එක වෙනස් වුණු ගමන් (ඩේටා වැටුණු ගමන්) විතරක් පින්ට් එක පටන් ගන්නවා
   useEffect(() => {
-    if (selectedProductForPrint) {
-      handlePrint();
-    }
-  }, [selectedProductForPrint]);
+    if (businessId) fetchProducts();
+  }, [businessId]);
 
-  const triggerBarcodePrint = (product: any) => {
-    setSelectedProductForPrint(product);
-  };
-
-  const openModal = (product: any = null) => {
-    if (product) {
-      setEditingProduct(product);
-      setFormData({ name: product.name, code: product.code, price: product.price, qty: product.qty, discount: product.discount || 0 });
-    } else {
-      setEditingProduct(null);
-      setFormData({ name: '', code: '', price: 0, qty: 0, discount: 0 });
-    }
-    setShowModal(true);
-  };
-
+  // 2. Add or Update Product
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const config = { headers: { 'user-role': user.role } };
     try {
-      const payload = { ...formData, price: parseFloat(formData.price.toString()), qty: parseFloat(formData.qty.toString()), discount: parseFloat(formData.discount.toString()) };
-      if (editingProduct) {
-        if (!isAdmin) return toast.error("Admin Only!");
-        await axios.put(`/api/products/${editingProduct._id}`, payload, config);
-        toast.success("Updated!");
-      } else {
-        await axios.post('/api/products', payload, config);
-        toast.success("Added!");
-      }
-      setShowModal(false);
-      fetchProducts();
-    } catch (err) { toast.error("Error!"); }
-  };
+      // Data වලට businessId එක ඇතුළත් කරනවා
+      const productData = { ...formData, businessId: businessId };
 
-  const handleDelete = async (id: string) => {
-    if (!isAdmin) return;
-    if (window.confirm("Delete this?")) {
-      await axios.delete(`/api/products/${id}`, { headers: { 'user-role': user.role } });
+      if (editingProduct) {
+        await axios.put(`/api/products/${editingProduct._id}`, productData);
+        toast.success("Product Updated");
+      } else {
+        await axios.post('/api/products/add', productData);
+        toast.success("Product Added");
+      }
+      
+      setFormData({ name: '', code: '', price: 0, qty: 0, discount: 0 });
+      setShowModal(false);
+      setEditingProduct(null);
       fetchProducts();
+    } catch (err) {
+      toast.error("Operation failed");
     }
   };
 
+  // 3. Delete Product
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure?")) return;
+    try {
+      await axios.delete(`/api/products/${id}`, {
+        headers: { 'user-role': user.role }
+      });
+      toast.success("Product Deleted");
+      fetchProducts();
+    } catch (err) {
+      toast.error("Delete failed");
+    }
+  };
+
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    onAfterPrint: () => setSelectedProductForPrint(null),
+  });
+
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.code.includes(searchTerm)
+  );
+
   return (
-    <div className="flex h-screen bg-slate-50 font-sans">
+    <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
-      <main className="flex-1 p-8 overflow-hidden flex flex-col">
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-black italic uppercase">Inventory</h1>
+      <main className="flex-1 p-8">
+        <header className="flex justify-between items-center mb-10">
+          <div>
+            <h1 className="text-3xl font-black italic uppercase tracking-tighter">Inventory <span className="text-indigo-600">Stock</span></h1>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Manage your retail products</p>
+          </div>
           <div className="flex gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
-              <input type="text" placeholder="Search..." className="pl-10 pr-4 py-2.5 bg-white rounded-xl outline-none shadow-sm font-bold" onChange={(e) => setSearchTerm(e.target.value)} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search items..." 
+                className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-2xl w-80 shadow-sm outline-none font-bold text-sm focus:ring-2 ring-indigo-100 transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <button onClick={() => openModal()} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg">
-              <Plus size={18}/> Add Item
-            </button>
+            {isAdmin && (
+              <button 
+                onClick={() => { setEditingProduct(null); setFormData({ name: '', code: '', price: 0, qty: 0, discount: 0 }); setShowModal(true); }}
+                className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center gap-2 shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
+              >
+                <Plus size={18} /> Add Product
+              </button>
+            )}
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pr-2">
-          {products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.includes(searchTerm)).map((p) => (
-            <div key={p._id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 group relative">
-              {p.discount > 0 && <div className="absolute top-0 right-10 bg-emerald-500 text-white px-3 py-1 rounded-b-xl font-black text-[9px]">{p.discount}% OFF</div>}
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Product Details</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Barcode</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Price</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Stock</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {filteredProducts.map((product) => (
+                <tr key={product._id} className="hover:bg-slate-50/50 transition-all group">
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                        <Package size={20} />
+                      </div>
+                      <div>
+                        <p className="font-black text-sm uppercase italic tracking-tighter">{product.name}</p>
+                        {product.discount > 0 && <span className="text-[9px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full font-bold">-{product.discount}% OFF</span>}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 font-mono text-xs font-bold text-slate-400">{product.code}</td>
+                  <td className="px-6 py-5 font-black text-slate-800">Rs. {product.price.toLocaleString()}</td>
+                  <td className="px-6 py-5">
+                    <span className={`px-4 py-2 rounded-xl font-black text-xs ${product.qty <= 5 ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-600'}`}>
+                      {product.qty} Units
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-right">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                      <button onClick={() => { setSelectedProductForPrint(product); setTimeout(handlePrint, 500); }} className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all"><Printer size={16}/></button>
+                      {isAdmin && (
+                        <>
+                          <button onClick={() => { setEditingProduct(product); setFormData(product); setShowModal(true); }} className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-amber-500 hover:border-amber-100 transition-all"><Edit3 size={16}/></button>
+                          <button onClick={() => handleDelete(product._id)} className="p-3 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-rose-500 hover:border-rose-100 transition-all"><Trash2 size={16}/></button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {showModal && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
+              <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-slate-300 hover:text-slate-600 transition-all"><X size={24}/></button>
+              <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-8">{editingProduct ? 'Edit' : 'Add'} <span className="text-indigo-600">Product</span></h2>
               
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-3 bg-slate-50 rounded-2xl text-indigo-600"><Package size={24} /></div>
-                <div className="flex gap-1">
-                   <button onClick={() => triggerBarcodePrint(p)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg"><Printer size={18}/></button>
-                   {isAdmin && (
-                    <>
-                      <button onClick={() => openModal(p)} className="p-2 text-amber-500 hover:bg-amber-50 rounded-lg"><Edit3 size={18}/></button>
-                      <button onClick={() => handleDelete(p._id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 size={18}/></button>
-                    </>
-                  )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <input type="text" placeholder="Product Name" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
+                <input type="text" placeholder="Barcode Code" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value})} required />
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="number" placeholder="Price" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} required />
+                  <input type="number" placeholder="Qty" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.qty} onChange={(e) => setFormData({...formData, qty: Number(e.target.value)})} required />
                 </div>
-              </div>
-
-              <h3 className="font-black uppercase text-sm mb-1 truncate">{p.name}</h3>
-              <div className="my-3 opacity-60 group-hover:opacity-100 transition-opacity flex justify-center">
-                <Barcode value={p.code || "000"} width={1} height={30} fontSize={10} background="transparent" />
-              </div>
-
-              <div className="flex justify-between items-end border-t border-slate-50 pt-4 mt-2">
-                <div>
-                  <p className="text-[9px] font-black text-slate-300 uppercase italic">Final Price</p>
-                  <p className="text-xl font-black text-indigo-600 italic">Rs.{(p.price - (p.price * p.discount / 100)).toFixed(2)}</p>
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                  <label className="text-[10px] font-black text-emerald-600 uppercase">Discount %</label>
+                  <input type="number" className="w-full bg-transparent outline-none font-black text-emerald-700 text-xl" value={formData.discount} onChange={(e) => setFormData({...formData, discount: Number(e.target.value)})} />
                 </div>
-                <div className="text-right">
-                  <p className="text-[9px] font-black text-slate-300 uppercase italic">Stock</p>
-                  <p className="text-lg font-black">{p.qty}</p>
-                </div>
-              </div>
+                <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
+                  {editingProduct ? 'Save Changes' : 'Add to Inventory'}
+                </button>
+              </form>
             </div>
-          ))}
-        </div>
-      </main>
+          </div>
+        )}
 
-      {/* Hidden Print Container - CSS Fix */}
-      <div className="hidden">
-        <div ref={printRef}>
-           {selectedProductForPrint && (
-             <PrintableBarcode 
-               product={selectedProductForPrint} 
-               businessName="DIGI SOLUTIONS" 
-             />
-           )}
-        </div>
-      </div>
-
-      {/* MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative">
-            <button onClick={() => setShowModal(false)} className="absolute top-8 right-8 text-slate-400"><X size={24}/></button>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input type="text" placeholder="Product Name" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
-              <input type="text" placeholder="Barcode Code" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value})} required />
-              <div className="grid grid-cols-2 gap-4">
-                <input type="number" step="any" placeholder="Price" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} required />
-                <input type="number" step="any" placeholder="Qty" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" value={formData.qty} onChange={(e) => setFormData({...formData, qty: Number(e.target.value)})} required />
-              </div>
-              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                <label className="text-[10px] font-black text-emerald-600 uppercase">Discount %</label>
-                <input type="number" step="any" className="w-full bg-transparent outline-none font-black text-emerald-700 text-xl" value={formData.discount} onChange={(e) => setFormData({...formData, discount: Number(e.target.value)})} />
-              </div>
-              <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase shadow-lg transition-all active:scale-95">Save Changes</button>
-            </form>
+        <div className="hidden">
+          <div ref={printRef}>
+            {selectedProductForPrint && <PrintableBarcode product={selectedProductForPrint} businessName={user.name} />}
           </div>
         </div>
-      )}
+      </main>
     </div>
   );
 };
