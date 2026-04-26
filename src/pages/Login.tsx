@@ -11,16 +11,12 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Oyaage backend deploy karala ena URL eka methanata danna
-  const API_URL = "https://smart-pos-system-lilac.vercel.app"; 
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // API_URL eka use karala request eka yawanne
-      const res = await axios.post(`${API_URL}/api/auth/login`, formData);
-      
+      // Relative path eka use karanne, CORS prashna enne na
+      const res = await axios.post('/api/auth/login', formData);
       if (res.data.success) {
         const user = res.data.user;
         if (activeTab === 'Admin' && user.role !== 'Admin') {
@@ -34,8 +30,7 @@ const Login = () => {
         navigate(user.role === 'Admin' ? '/dashboard' : '/pos');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Login Failed. Try again.";
-      toast.error(msg);
+      toast.error(err.response?.data?.message || "Login Failed");
     } finally {
       setIsLoading(false);
     }
@@ -48,23 +43,19 @@ const Login = () => {
           <button onClick={() => setActiveTab('User')} className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] ${activeTab === 'User' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Staff</button>
           <button onClick={() => setActiveTab('Admin')} className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] ${activeTab === 'Admin' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400'}`}>Admin</button>
         </div>
-        <h1 className="text-3xl font-black uppercase text-center mb-10 italic">
-          {activeTab} <span className={activeTab === 'Admin' ? 'text-rose-600' : 'text-indigo-600'}>Portal</span>
-        </h1>
+        <h1 className="text-3xl font-black uppercase text-center mb-10 italic">{activeTab} <span className={activeTab === 'Admin' ? 'text-rose-600' : 'text-indigo-600'}>Portal</span></h1>
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="relative">
             <User className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
-            <input name="username" type="text" required value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} className="w-full pl-16 pr-6 py-5 rounded-2xl bg-slate-50 outline-none font-bold text-sm focus:ring-2 ring-indigo-50" placeholder="Email Address" />
+            <input name="username" type="text" required value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} className="w-full pl-16 pr-6 py-5 rounded-2xl bg-slate-50 outline-none font-bold text-sm" placeholder="Email Address" />
           </div>
           <div className="relative">
             <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
-            <input name="password" type={showPassword ? "text" : "password"} required value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full pl-16 pr-14 py-5 rounded-2xl bg-slate-50 outline-none font-bold text-sm focus:ring-2 ring-indigo-50" placeholder="••••••••" />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300">
-              {showPassword ? <EyeOff size={20}/> : <Eye size={20}/>}
-            </button>
+            <input name="password" type={showPassword ? "text" : "password"} required value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full pl-16 pr-14 py-5 rounded-2xl bg-slate-50 outline-none font-bold text-sm" placeholder="••••••••" />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300">{showPassword ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
           </div>
-          <button type="submit" disabled={isLoading} className={`w-full py-5 text-white rounded-[2rem] font-black uppercase text-sm shadow-xl transition-all active:scale-95 ${activeTab === 'Admin' ? 'bg-rose-600 shadow-rose-100' : 'bg-indigo-600 shadow-indigo-100'}`}>
-            {isLoading ? <Loader2 className="animate-spin mx-auto" size={24} /> : "Sign In"}
+          <button type="submit" disabled={isLoading} className={`w-full py-5 text-white rounded-[2rem] font-black uppercase text-sm shadow-xl ${activeTab === 'Admin' ? 'bg-rose-600' : 'bg-indigo-600'}`}>
+            {isLoading ? <Loader2 className="animate-spin mx-auto" /> : "Sign In"}
           </button>
         </form>
       </div>
