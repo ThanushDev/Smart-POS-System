@@ -19,7 +19,7 @@ const Inventory = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const API_URL = "/api/products";
 
-  // Keyboard Arrow Key Navigation
+  // Arrow Keys Navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -39,71 +39,46 @@ const Inventory = () => {
 
   useEffect(() => { if (user.businessId) fetchProducts(); }, [user.businessId]);
 
-  // Stable Print Logic - 2s delay added to prevent blank page
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    onBeforeGetContent: () => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve();
-        }, 2000); // 2 Seconds delay for barcode to draw
-      });
-    },
     onAfterPrint: () => setSelectedProductForPrint(null)
   });
 
+  // Unique Trigger to solve blank issue
   const triggerPrint = (product: any) => {
+    toast.info("Preparing sticker...", { autoClose: 1000 });
     setSelectedProductForPrint(product);
+    
+    // Barcode draw wenna thawa tikk welawak dila, dialog eka open karanawa
     setTimeout(() => {
       handlePrint();
-    }, 500);
+    }, 1500); 
   };
 
   const openModal = (product: any = null) => {
     if (product) {
       setEditingProduct(product);
-      setFormData({ 
-        name: product.name, 
-        code: product.code, 
-        price: product.price.toString(), 
-        qty: product.qty.toString(), 
-        discount: (product.discount || 0).toString() 
-      });
+      setFormData({ name: product.name, code: product.code, price: product.price.toString(), qty: product.qty.toString(), discount: (product.discount || 0).toString() });
     } else {
       setEditingProduct(null);
-      setFormData({ 
-        name: '', 
-        code: `SKU-${Math.floor(100000 + Math.random() * 900000)}`, 
-        price: '', 
-        qty: '', 
-        discount: '0' 
-      });
+      setFormData({ name: '', code: `SKU-${Math.floor(100000 + Math.random() * 900000)}`, price: '', qty: '', discount: '0' });
     }
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { 
-      ...formData, 
-      price: parseFloat(formData.price), 
-      qty: parseFloat(formData.qty), 
-      discount: parseFloat(formData.discount) || 0, 
-      businessId: user.businessId 
-    };
+    const payload = { ...formData, price: parseFloat(formData.price), qty: parseFloat(formData.qty), discount: parseFloat(formData.discount) || 0, businessId: user.businessId };
     try {
       if (editingProduct) await axios.put(`${API_URL}/${editingProduct._id}`, payload);
       else await axios.post(API_URL, payload);
       setShowModal(false);
       fetchProducts();
-      toast.success("Inventory Updated!");
-    } catch (err) { toast.error("Save failed!"); }
+      toast.success("Saved!");
+    } catch (err) { toast.error("Error!"); }
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="flex h-screen bg-slate-50 italic font-sans">
@@ -114,7 +89,7 @@ const Inventory = () => {
           <div className="flex gap-3">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-              <input type="text" placeholder="Search..." className="pl-12 pr-4 py-3 rounded-2xl bg-white border border-slate-100 outline-none font-bold text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input type="text" placeholder="Search..." className="pl-12 pr-4 py-3 rounded-2xl bg-white border outline-none font-bold text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <button onClick={() => openModal()} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs shadow-lg">Add Item</button>
           </div>
@@ -122,41 +97,28 @@ const Inventory = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {filteredProducts.map((p) => (
-            <div key={p._id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 group relative hover:shadow-xl transition-all">
-              {p.discount > 0 && (
-                <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-1 shadow-md">
-                  <Tag size={10}/> {p.discount}% OFF
-                </div>
-              )}
-              
+            <div key={p._id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border group relative hover:shadow-xl transition-all">
+              {p.discount > 0 && <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-black tracking-tighter shadow-md"><Tag size={10}/> {p.discount}% OFF</div>}
               <div className="flex justify-between mb-4">
                 <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600"><Package size={22}/></div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => triggerPrint(p)} className="p-2 text-slate-400 hover:text-indigo-600"><Printer size={18}/></button>
                   <button onClick={() => openModal(p)} className="p-2 text-slate-400 hover:text-amber-500"><Edit3 size={18}/></button>
-                  <button onClick={() => {if(window.confirm("Delete item?")) axios.delete(`${API_URL}/${p._id}`).then(fetchProducts)}} className="p-2 text-slate-400 hover:text-rose-500"><Trash2 size={18}/></button>
+                  <button onClick={() => {if(window.confirm("Delete?")) axios.delete(`${API_URL}/${p._id}`).then(fetchProducts)}} className="p-2 text-slate-400 hover:text-rose-500"><Trash2 size={18}/></button>
                 </div>
               </div>
-
               <h3 className="font-black uppercase text-sm truncate">{p.name}</h3>
               <p className="text-[10px] text-slate-300 font-bold mt-1 tracking-widest">{p.code}</p>
-
-              <div className="mt-6 flex justify-between items-end border-t pt-4 border-slate-50">
-                <div>
-                  <p className="text-[9px] text-slate-400 font-black uppercase">Price</p>
-                  <p className="text-indigo-600 font-black text-lg">Rs.{p.price.toLocaleString()}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] text-slate-400 font-black uppercase">Stock</p>
-                  <p className="text-xs font-black text-slate-400">{p.qty} PCS</p>
-                </div>
+              <div className="mt-6 flex justify-between items-end border-t pt-4">
+                <div><p className="text-[9px] text-slate-400 font-black uppercase">Price</p><p className="text-indigo-600 font-black text-lg">Rs.{p.price.toLocaleString()}</p></div>
+                <div className="text-right"><p className="text-[9px] text-slate-400 font-black uppercase">Qty</p><p className="text-xs font-black text-slate-400">{p.qty} PCS</p></div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* --- HIDDEN PRINT AREA --- */}
-        <div style={{ position: 'absolute', top: '-10000px', left: '-10000px' }}>
+        {/* --- OFF-SCREEN PRINT AREA --- */}
+        <div style={{ position: 'fixed', left: '-5000px', top: 0 }}>
           <div ref={printRef}>
             {selectedProductForPrint && (
               <PrintableBarcode 
@@ -167,66 +129,35 @@ const Inventory = () => {
           </div>
         </div>
 
-        {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
             <div className="bg-white w-full max-w-md rounded-[3.5rem] p-10 relative shadow-2xl">
               <button onClick={() => setShowModal(false)} className="absolute top-8 right-8 text-slate-300"><X size={24}/></button>
               <h2 className="text-2xl font-black uppercase mb-8 italic">Product <span className="text-indigo-600">Entry</span></h2>
-              
               <form ref={formRef} onKeyDown={handleKeyDown} onSubmit={handleSubmit} className="space-y-4">
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1 mb-1 italic">
-                    <Hash size={10}/> Product ID (Unique)
-                  </label>
-                  <input type="text" readOnly className="w-full bg-transparent font-black text-sm outline-none text-indigo-400" value={formData.code} />
+                  <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1 mb-1 italic"><Hash size={10}/> Unique ID (Read Only)</label>
+                  <input type="text" readOnly className="w-full bg-transparent font-black text-sm outline-none text-indigo-400 cursor-not-allowed" value={formData.code} />
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Product Name</label>
-                  <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-indigo-600" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Item Name" required />
+                  <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-indigo-600 transition-all" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Item Name" required />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Price (Rs.)</label>
-                    <input 
-                      type="number" 
-                      onWheel={(e) => (e.target as HTMLInputElement).blur()} 
-                      className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-indigo-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                      value={formData.price} 
-                      onChange={(e) => setFormData({...formData, price: e.target.value})} 
-                      placeholder="0.00" 
-                      required 
-                    />
+                    <input type="number" onWheel={(e) => (e.target as HTMLInputElement).blur()} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border focus:border-indigo-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} placeholder="0.00" required />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Quantity</label>
-                    <input 
-                      type="number" 
-                      onWheel={(e) => (e.target as HTMLInputElement).blur()} 
-                      className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-indigo-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                      value={formData.qty} 
-                      onChange={(e) => setFormData({...formData, qty: e.target.value})} 
-                      placeholder="0" 
-                      required 
-                    />
+                    <input type="number" onWheel={(e) => (e.target as HTMLInputElement).blur()} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border focus:border-indigo-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={formData.qty} onChange={(e) => setFormData({...formData, qty: e.target.value})} placeholder="0" required />
                   </div>
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-emerald-600 uppercase ml-2 italic">Discount (%)</label>
-                  <input 
-                    type="number" 
-                    onWheel={(e) => (e.target as HTMLInputElement).blur()} 
-                    className="w-full p-4 bg-emerald-50 rounded-2xl outline-none font-bold border border-emerald-100 focus:border-emerald-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                    value={formData.discount} 
-                    onChange={(e) => setFormData({...formData, discount: e.target.value})} 
-                    placeholder="0" 
-                  />
+                  <input type="number" onWheel={(e) => (e.target as HTMLInputElement).blur()} className="w-full p-4 bg-emerald-50 rounded-2xl outline-none font-bold border border-emerald-100 focus:border-emerald-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" value={formData.discount} onChange={(e) => setFormData({...formData, discount: e.target.value})} placeholder="0" />
                 </div>
-
-                <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-xl hover:bg-indigo-700 transition-all">Save Product</button>
+                <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-xl hover:bg-indigo-700 transition-all mt-4">Save Product</button>
               </form>
             </div>
           </div>
