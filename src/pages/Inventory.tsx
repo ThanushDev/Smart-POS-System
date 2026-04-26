@@ -19,7 +19,7 @@ const Inventory = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const API_URL = "/api/products";
 
-  // 1. Keyboard Navigation (Arrow Keys) & Increase/Decrease Fix
+  // Keyboard Arrow Key Navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -39,16 +39,24 @@ const Inventory = () => {
 
   useEffect(() => { if (user.businessId) fetchProducts(); }, [user.businessId]);
 
-  // 2. Barcode Print Logic with 0.5s delay (Since script is in index.html)
+  // Stable Print Logic - 2s delay added to prevent blank page
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
-    onBeforeGetContent: () => new Promise((resolve) => setTimeout(resolve, 500)),
+    onBeforeGetContent: () => {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve();
+        }, 2000); // 2 Seconds delay for barcode to draw
+      });
+    },
     onAfterPrint: () => setSelectedProductForPrint(null)
   });
 
   const triggerPrint = (product: any) => {
     setSelectedProductForPrint(product);
-    setTimeout(() => { handlePrint(); }, 200);
+    setTimeout(() => {
+      handlePrint();
+    }, 500);
   };
 
   const openModal = (product: any = null) => {
@@ -102,7 +110,7 @@ const Inventory = () => {
       <Sidebar />
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="flex justify-between items-center mb-10">
-          <h1 className="text-3xl font-black uppercase tracking-tight italic">Stock <span className="text-indigo-600">Inventory</span></h1>
+          <h1 className="text-3xl font-black uppercase tracking-tight">Stock <span className="text-indigo-600">Inventory</span></h1>
           <div className="flex gap-3">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
@@ -135,11 +143,11 @@ const Inventory = () => {
 
               <div className="mt-6 flex justify-between items-end border-t pt-4 border-slate-50">
                 <div>
-                  <p className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">Price</p>
+                  <p className="text-[9px] text-slate-400 font-black uppercase">Price</p>
                   <p className="text-indigo-600 font-black text-lg">Rs.{p.price.toLocaleString()}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">Stock</p>
+                  <p className="text-[9px] text-slate-400 font-black uppercase">Stock</p>
                   <p className="text-xs font-black text-slate-400">{p.qty} PCS</p>
                 </div>
               </div>
@@ -167,27 +175,23 @@ const Inventory = () => {
               <h2 className="text-2xl font-black uppercase mb-8 italic">Product <span className="text-indigo-600">Entry</span></h2>
               
               <form ref={formRef} onKeyDown={handleKeyDown} onSubmit={handleSubmit} className="space-y-4">
-                {/* ID Label & Read-only Field */}
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                   <label className="text-[9px] font-black uppercase text-slate-400 flex items-center gap-1 mb-1 italic">
-                    <Hash size={10}/> Unique Product ID (Read Only)
+                    <Hash size={10}/> Product ID (Unique)
                   </label>
-                  <input type="text" readOnly className="w-full bg-transparent font-black text-sm outline-none text-indigo-400 cursor-not-allowed" value={formData.code} />
+                  <input type="text" readOnly className="w-full bg-transparent font-black text-sm outline-none text-indigo-400" value={formData.code} />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic flex items-center gap-1">
-                    <Info size={10}/> Item Name
-                  </label>
-                  <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-indigo-600 focus:bg-white transition-all" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g. Wireless Mouse" required />
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Product Name</label>
+                  <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-indigo-600" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Item Name" required />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Price (LKR)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Price (Rs.)</label>
                     <input 
                       type="number" 
-                      step="any" 
                       onWheel={(e) => (e.target as HTMLInputElement).blur()} 
                       className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-indigo-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                       value={formData.price} 
@@ -197,7 +201,7 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Stock Qty</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 italic">Quantity</label>
                     <input 
                       type="number" 
                       onWheel={(e) => (e.target as HTMLInputElement).blur()} 
@@ -222,7 +226,7 @@ const Inventory = () => {
                   />
                 </div>
 
-                <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-xl hover:bg-indigo-700 transition-all mt-4">Save Product</button>
+                <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase shadow-xl hover:bg-indigo-700 transition-all">Save Product</button>
               </form>
             </div>
           </div>
