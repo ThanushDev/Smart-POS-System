@@ -2,51 +2,87 @@ import React from 'react';
 
 const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, businessInfo }: any) => {
   return (
-    <div id="bill-content" style={{ width: '80mm', padding: '5mm', fontFamily: 'monospace', color: '#000', backgroundColor: '#fff' }}>
+    <div id="bill-content" style={{ 
+      width: '80mm', 
+      padding: '4mm', 
+      fontFamily: 'monospace', 
+      color: '#000', 
+      backgroundColor: '#fff',
+      fontSize: '12px'
+    }}>
+      {/* Shop Header */}
       <div style={{ textAlign: 'center', marginBottom: '4mm' }}>
-        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-          {businessInfo?.name || 'DIGI SOLUTIONS'}
+        <h2 style={{ margin: '0 0 1mm 0', fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+          {businessInfo?.name || 'RETAIL SHOP NAME'}
         </h2>
-        <p style={{ margin: 0, fontSize: '11px' }}>{businessInfo?.email || ''}</p>
+        <p style={{ margin: 0, fontSize: '11px' }}>{businessInfo?.address || 'Shop Address Here'}</p>
+        <p style={{ margin: 0, fontSize: '11px' }}>Tel: {businessInfo?.phone || '07X XXX XXXX'}</p>
       </div>
 
-      <div style={{ borderBottom: '1px dashed #000', marginBottom: '2mm', fontSize: '11px' }}>
-        <p style={{ margin: '1mm 0' }}>INV: {invoiceId || 'N/A'}</p>
-        <p style={{ margin: '1mm 0' }}>DATE: {date || ''} {time || ''}</p>
-        <p style={{ margin: '1mm 0' }}>CASHIER: {currentUser?.name || 'ADMIN'}</p>
+      {/* Invoice Meta Data */}
+      <div style={{ borderBottom: '1px dashed #000', borderTop: '1px dashed #000', padding: '2mm 0', marginBottom: '2mm', fontSize: '11px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>INV: {invoiceId}</span>
+          <span>CASHIER: {currentUser?.name || 'ADMIN'}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>DATE: {date}</span>
+          <span>TIME: {time}</span>
+        </div>
       </div>
 
+      {/* Items Table */}
       <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #000' }}>
-            <th style={{ textAlign: 'left' }}>ITEM</th>
+            <th style={{ textAlign: 'left', paddingBottom: '1mm' }}>ITEM</th>
             <th style={{ textAlign: 'center' }}>QTY</th>
             <th style={{ textAlign: 'right' }}>PRICE</th>
+            <th style={{ textAlign: 'right' }}>DISC</th>
+            <th style={{ textAlign: 'right' }}>TOTAL</th>
           </tr>
         </thead>
         <tbody>
-          {(cart || []).map((item: any, index: number) => (
-            <tr key={index}>
-              <td style={{ padding: '1mm 0', textTransform: 'uppercase' }}>{item?.name || 'ITEM'}</td>
-              <td style={{ textAlign: 'center' }}>{item?.quantity || 0}</td>
-              <td style={{ textAlign: 'right' }}>
-                {( (Number(item?.price) || 0) * (Number(item?.quantity) || 0) ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </td>
-            </tr>
-          ))}
+          {(cart || []).map((item: any, index: number) => {
+            const itemPrice = Number(item?.price) || 0;
+            const itemQty = Number(item?.quantity) || 0;
+            const itemDisc = (Number(item?.unitDiscount) || 0) * itemQty;
+            const itemTotal = (itemPrice * itemQty) - itemDisc;
+
+            return (
+              <tr key={index}>
+                <td style={{ padding: '1mm 0', textTransform: 'uppercase', maxWidth: '30mm', overflow: 'hidden' }}>{item?.name}</td>
+                <td style={{ textAlign: 'center' }}>{itemQty}</td>
+                <td style={{ textAlign: 'right' }}>{itemPrice.toFixed(0)}</td>
+                <td style={{ textAlign: 'right' }}>{itemDisc > 0 ? `-${itemDisc.toFixed(0)}` : '0'}</td>
+                <td style={{ textAlign: 'right' }}>{itemTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
-      <div style={{ borderTop: '1px dashed #000', marginTop: '3mm', paddingTop: '2mm', fontSize: '14px', fontWeight: 'bold' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>TOTAL:</span>
+      {/* Summary */}
+      <div style={{ borderTop: '1px solid #000', marginTop: '2mm', paddingTop: '2mm' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 'bold' }}>
+          <span>NET TOTAL:</span>
           <span>Rs.{(Number(total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
         </div>
       </div>
 
-      <div style={{ textAlign: 'center', marginTop: '6mm', fontSize: '10px' }}>
-        <p>THANK YOU COME AGAIN!</p>
-        <p style={{ fontSize: '8px' }}>POS System by Digi Solutions</p>
+      {/* Footer */}
+      <div style={{ textAlign: 'center', marginTop: '6mm' }}>
+        <p style={{ margin: 0, fontWeight: 'bold' }}>THANK YOU COME AGAIN!</p>
+        
+        {/* ඔයාගේ Company Branding එක */}
+        <div style={{ marginTop: '4mm', borderTop: '0.5px solid #eee', paddingTop: '2mm' }}>
+          <p style={{ margin: 0, fontSize: '9px', color: '#555', letterSpacing: '1px' }}>
+            Software by <b>DIGI SOLUTIONS</b>
+          </p>
+          <p style={{ margin: 0, fontSize: '8px', color: '#777' }}>
+            Contact: 077 123 4567 | www.digisolutions.lk
+          </p>
+        </div>
       </div>
     </div>
   );
