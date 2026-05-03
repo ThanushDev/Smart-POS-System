@@ -13,9 +13,13 @@ const Report = () => {
         const res = await axios.get(`/api/invoices?businessId=${user.businessId}`);
         const salesMap: any = {};
         
-        res.data.forEach((inv: any) => {
+        // Safe check for res.data
+        const data = Array.isArray(res.data) ? res.data : [];
+
+        data.forEach((inv: any) => {
           const date = new Date(inv.date).toLocaleDateString();
-          salesMap[date] = (salesMap[date] || 0) + inv.total;
+          // Safe handling for inv.total
+          salesMap[date] = (salesMap[date] || 0) + (Number(inv?.total) || 0);
         });
 
         const processed = Object.keys(salesMap).map(date => ({
