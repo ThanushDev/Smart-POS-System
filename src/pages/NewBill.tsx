@@ -19,7 +19,7 @@ const NewBill = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // safe math logic
+  // --- Safe Math Logic ---
   const subTotal = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
   const discountTotal = cart.reduce((sum, item) => sum + (Number(item.unitDiscount || 0) * Number(item.quantity || 0)), 0);
   const finalTotal = subTotal - discountTotal;
@@ -35,46 +35,44 @@ const NewBill = () => {
       .catch(() => setProducts([]));
   };
 
-  // --- මෙතන තමයි ඔයා ඉල්ලපු Barcode Trick එක තියෙන්නේ ---
+  // --- අර Barcode එකේදී ගත්ත Window Trick එක (Print Logic) ---
   const handlePrintInNewWindow = () => {
     const printContent = document.getElementById('printable-bill-area');
     if (!printContent) return;
 
-    // අලුත් window එකක් open කරනවා
-    const printWindow = window.open('', '', 'width=800,height=600');
+    const printWindow = window.open('', '', 'width=800,height=900');
     
     if (printWindow) {
-      printWindow.document.write('<html><head><title>Print Bill</title>');
-      // CSS styles ටික මෙතනට දානවා (Thermal printer එකට 80mm set වෙන විදිහට)
+      printWindow.document.write('<html><head><title>Print Bill - DIGI SOLUTIONS</title>');
       printWindow.document.write(`
         <style>
-          body { margin: 0; padding: 0; background-color: white; }
           @page { size: 80mm auto; margin: 0; }
+          body { margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; background-color: #fff; }
           @media print {
             body { width: 80mm; }
           }
         </style>
       `);
       printWindow.document.write('</head><body>');
-      printWindow.document.write(printContent.innerHTML); // Bill එකේ HTML එක copy කරනවා
+      printWindow.document.write(printContent.innerHTML);
       printWindow.document.write('</body></html>');
       
       printWindow.document.close();
       printWindow.focus();
       
-      // පොඩි delay එකක් දීලා print එක open කරනවා
+      // Delay එකක් දීලා print dialog එක open කරනවා
       setTimeout(() => {
         printWindow.print();
         printWindow.close();
         
-        // Print වුණාට පස්සේ Cart එක clear කරනවා
+        // Print වුණාට පස්සේ බිල reset කරනවා
         setCart([]);
         setInvoiceData(null);
         setCartIndex(-1);
         setSearchTerm('');
         setIsProcessing(false);
         setTimeout(() => searchInputRef.current?.focus(), 200);
-      }, 500);
+      }, 600);
     }
   };
 
@@ -107,7 +105,6 @@ const NewBill = () => {
     }
   };
 
-  // Invoice Data සෙට් වුණු ගමන් අලුත් Window එකේ Print වෙනවා
   useEffect(() => {
     if (invoiceData) {
       const timer = setTimeout(() => handlePrintInNewWindow(), 500);
@@ -115,15 +112,13 @@ const NewBill = () => {
     }
   }, [invoiceData]);
 
+  // --- Keyboard Shortcuts Logic ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showPaymentModal) {
         if (e.key === 'ArrowLeft') { e.preventDefault(); setPaymentMethod('CASH'); }
         if (e.key === 'ArrowRight') { e.preventDefault(); setPaymentMethod('CARD'); }
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          processFinalOrder(cart, paymentMethod, finalTotal);
-        }
+        if (e.key === 'Enter') { e.preventDefault(); processFinalOrder(cart, paymentMethod, finalTotal); }
         if (e.key === 'Escape') { e.preventDefault(); setShowPaymentModal(false); }
         return; 
       }
@@ -180,10 +175,11 @@ const NewBill = () => {
     <div className="flex h-screen bg-slate-100 font-sans overflow-hidden italic">
       <Sidebar />
       <main className="flex-1 p-6 flex gap-6 overflow-hidden">
+        {/* Search Section */}
         <div className="flex-[1.5] flex flex-col">
           <div className={`bg-white p-6 rounded-[2.5rem] shadow-md flex items-center gap-4 mb-4 border-4 transition-all ${cartIndex === -1 ? 'border-indigo-500' : 'border-transparent opacity-40'}`}>
             <Search className="text-indigo-600" size={24} />
-            <input ref={searchInputRef} type="text" placeholder="F2: SEARCH" className="flex-1 outline-none font-black text-xl uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <input ref={searchInputRef} type="text" placeholder="F2: SEARCH PRODUCT" className="flex-1 outline-none font-black text-xl uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
           <div className="space-y-2 overflow-y-auto">
             {searchTerm && filtered.map((p, i) => (
@@ -195,6 +191,7 @@ const NewBill = () => {
           </div>
         </div>
 
+        {/* Cart Section */}
         <div className="flex-1 bg-white rounded-[3rem] shadow-2xl flex flex-col border border-slate-200 overflow-hidden">
           <div className={`p-6 ${cartIndex !== -1 ? 'bg-amber-500' : 'bg-slate-800'} text-white`}>
             <h2 className="text-xl font-black uppercase tracking-tight">Cart Summary</h2>
@@ -221,6 +218,7 @@ const NewBill = () => {
         </div>
       </main>
 
+      {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[999]">
           <div className="bg-white p-12 rounded-[4rem] text-center shadow-2xl border-8 border-indigo-600 w-[500px]">
@@ -242,7 +240,7 @@ const NewBill = () => {
         </div>
       )}
 
-      {/* හංගලා තියෙන Print Area එක. ID එක වැදගත්. */}
+      {/* Hidden Print Section */}
       <div className="hidden">
         <div id="printable-bill-area">
           {invoiceData && <PrintableBill {...invoiceData} businessInfo={user} />}
