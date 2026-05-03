@@ -35,7 +35,7 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 
 // --- ROUTES ---
 
-// Login Fix
+// 1. LOGIN
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   try {
@@ -46,12 +46,14 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
+// 2. GET PRODUCTS
 app.get('/api/products', async (req, res) => {
   await connectDB();
   const bid = req.query.businessId;
   res.json(await Product.find({ businessId: bid }).sort({ createdAt: -1 }));
 });
 
+// 3. ADD/UPDATE PRODUCT
 app.post('/api/products', async (req, res) => {
   await connectDB();
   const newProduct = new Product(req.body);
@@ -65,17 +67,48 @@ app.put('/api/products/:id', async (req, res) => {
   res.json(updated);
 });
 
+// 4. INVOICE & INVENTORY UPDATE (FIXED)
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
-  const inv = new Invoice(req.body);
-  await inv.save();
-  for (let item of req.body.items) {
-    await Product.findByIdAndUpdate(item._id, { $inc: { qty: -item.cartQty } });
+  try {
+    const { cart, invoiceId, total, currentUser, date, businessId } = req.body;
+
+    // Invoice එක Save කිරීම
+    const inv = new Invoice({
+      invoiceId,
+      items: cart, // Frontend එකෙන් එන cart එක items ලෙස save වේ
+      total,
+      cashier: currentUser?.name || 'Cashier',
+      date,
+      businessId
+    });
+    await inv.save();
+
+    // Inventory එකෙන් අඩු කිරීම (Quantity එක හරියටම map කළා)
+    for (let item of cart) {
+      await Product.findByIdAndUpdate(item._id, { 
+        $inc: { qty: -item.quantity } 
+      });
+    }
+
+    res.status(201).json(inv);
+  } catch (err) {
+    console.error("Invoice Error:", err);
+    res.status(500).json({ error: err.message });
   }
-  res.json(inv);
 });
 
-// Test Route
-app.get('/api/test', (req, res) => res.json({ status: "API is Running" }));
+// 5. DASHBOARD STATS (404 FIX)
+app.get('/api/dashboard/stats', async (req, res) => {
+  await connectDB();
+  try {
+    const bid = req.query.businessId;
+    const totalInvoices = await Invoice.countDocuments({ businessId: bid });
+    const totalProducts = await Product.countDocuments({ businessId: bid });
+    res.json({ totalInvoices, totalProducts, sales: 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default app;
