@@ -35,7 +35,7 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 
 // --- ROUTES ---
 
-// 1. LOGIN
+// LOGIN
 app.post('/api/auth/login', async (req, res) => {
   await connectDB();
   try {
@@ -46,14 +46,14 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// 2. GET PRODUCTS
+// GET PRODUCTS
 app.get('/api/products', async (req, res) => {
   await connectDB();
   const bid = req.query.businessId;
   res.json(await Product.find({ businessId: bid }).sort({ createdAt: -1 }));
 });
 
-// 3. ADD/UPDATE PRODUCT
+// ADD/UPDATE PRODUCTS
 app.post('/api/products', async (req, res) => {
   await connectDB();
   const newProduct = new Product(req.body);
@@ -67,16 +67,15 @@ app.put('/api/products/:id', async (req, res) => {
   res.json(updated);
 });
 
-// 4. INVOICE & INVENTORY UPDATE (FIXED)
+// INVOICE & INVENTORY UPDATE (FIXED)
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const { cart, invoiceId, total, currentUser, date, businessId } = req.body;
 
-    // Invoice එක Save කිරීම
     const inv = new Invoice({
       invoiceId,
-      items: cart, // Frontend එකෙන් එන cart එක items ලෙස save වේ
+      items: cart,
       total,
       cashier: currentUser?.name || 'Cashier',
       date,
@@ -84,7 +83,7 @@ app.post('/api/invoices', async (req, res) => {
     });
     await inv.save();
 
-    // Inventory එකෙන් අඩු කිරීම (Quantity එක හරියටම map කළා)
+    // Loop through cart to update inventory
     for (let item of cart) {
       await Product.findByIdAndUpdate(item._id, { 
         $inc: { qty: -item.quantity } 
@@ -93,12 +92,11 @@ app.post('/api/invoices', async (req, res) => {
 
     res.status(201).json(inv);
   } catch (err) {
-    console.error("Invoice Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// 5. DASHBOARD STATS (404 FIX)
+// DASHBOARD STATS (404 FIX)
 app.get('/api/dashboard/stats', async (req, res) => {
   await connectDB();
   try {
@@ -110,5 +108,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+app.get('/api/test', (req, res) => res.json({ status: "API is Running" }));
 
 export default app;
