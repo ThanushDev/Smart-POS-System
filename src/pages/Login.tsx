@@ -15,7 +15,6 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Relative path eka use karanne, CORS prashna enne na
       const res = await axios.post('/api/auth/login', formData);
       if (res.data.success) {
         const user = res.data.user;
@@ -43,7 +42,11 @@ const Login = () => {
           <button onClick={() => setActiveTab('User')} className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] ${activeTab === 'User' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>Staff</button>
           <button onClick={() => setActiveTab('Admin')} className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] ${activeTab === 'Admin' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400'}`}>Admin</button>
         </div>
-        <h1 className="text-3xl font-black uppercase text-center mb-10 italic">{activeTab} <span className={activeTab === 'Admin' ? 'text-rose-600' : 'text-indigo-600'}>Portal</span></h1>
+        
+        <h1 className="text-3xl font-black uppercase text-center mb-10 italic">
+          {activeTab} <span className={activeTab === 'Admin' ? 'text-rose-600' : 'text-indigo-600'}>Portal</span>
+        </h1>
+        
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="relative">
             <User className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
@@ -58,6 +61,20 @@ const Login = () => {
             {isLoading ? <Loader2 className="animate-spin mx-auto" /> : "Sign In"}
           </button>
         </form>
+
+        {/* අලුතින් එකතු කරපු Register Link එක */}
+        <div className="mt-8 text-center border-t-2 border-slate-50 pt-6">
+          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">
+            Don't have a business account?
+          </p>
+          <button 
+            onClick={() => navigate('/register')} 
+            className="text-indigo-600 font-black uppercase text-xs hover:underline transition-all"
+          >
+            Register Your Shop Now
+          </button>
+        </div>
+
       </div>
     </div>
   );
