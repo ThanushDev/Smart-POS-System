@@ -4,7 +4,6 @@ import PrintableBill from '../components/PrintableBill';
 import { Search, Receipt } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { useReactToPrint } from 'react-to-print';
 
 const NewBill = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -18,7 +17,6 @@ const NewBill = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const printRef = useRef<HTMLDivElement>(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   // safe math logic
@@ -37,17 +35,48 @@ const NewBill = () => {
       .catch(() => setProducts([]));
   };
 
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    onAfterPrint: () => {
-      setCart([]);
-      setInvoiceData(null);
-      setCartIndex(-1);
-      setSearchTerm('');
-      setIsProcessing(false);
-      setTimeout(() => searchInputRef.current?.focus(), 200);
+  // --- මෙතන තමයි ඔයා ඉල්ලපු Barcode Trick එක තියෙන්නේ ---
+  const handlePrintInNewWindow = () => {
+    const printContent = document.getElementById('printable-bill-area');
+    if (!printContent) return;
+
+    // අලුත් window එකක් open කරනවා
+    const printWindow = window.open('', '', 'width=800,height=600');
+    
+    if (printWindow) {
+      printWindow.document.write('<html><head><title>Print Bill</title>');
+      // CSS styles ටික මෙතනට දානවා (Thermal printer එකට 80mm set වෙන විදිහට)
+      printWindow.document.write(`
+        <style>
+          body { margin: 0; padding: 0; background-color: white; }
+          @page { size: 80mm auto; margin: 0; }
+          @media print {
+            body { width: 80mm; }
+          }
+        </style>
+      `);
+      printWindow.document.write('</head><body>');
+      printWindow.document.write(printContent.innerHTML); // Bill එකේ HTML එක copy කරනවා
+      printWindow.document.write('</body></html>');
+      
+      printWindow.document.close();
+      printWindow.focus();
+      
+      // පොඩි delay එකක් දීලා print එක open කරනවා
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+        
+        // Print වුණාට පස්සේ Cart එක clear කරනවා
+        setCart([]);
+        setInvoiceData(null);
+        setCartIndex(-1);
+        setSearchTerm('');
+        setIsProcessing(false);
+        setTimeout(() => searchInputRef.current?.focus(), 200);
+      }, 500);
     }
-  });
+  };
 
   const processFinalOrder = async (currentCart: any[], currentMethod: string, total: number) => {
     if (currentCart.length === 0 || isProcessing) return;
@@ -78,9 +107,10 @@ const NewBill = () => {
     }
   };
 
+  // Invoice Data සෙට් වුණු ගමන් අලුත් Window එකේ Print වෙනවා
   useEffect(() => {
     if (invoiceData) {
-      const timer = setTimeout(() => handlePrint(), 500);
+      const timer = setTimeout(() => handlePrintInNewWindow(), 500);
       return () => clearTimeout(timer);
     }
   }, [invoiceData]);
@@ -212,8 +242,9 @@ const NewBill = () => {
         </div>
       )}
 
+      {/* හංගලා තියෙන Print Area එක. ID එක වැදගත්. */}
       <div className="hidden">
-        <div ref={printRef}>
+        <div id="printable-bill-area">
           {invoiceData && <PrintableBill {...invoiceData} businessInfo={user} />}
         </div>
       </div>
