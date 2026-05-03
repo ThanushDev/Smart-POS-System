@@ -1,8 +1,10 @@
 import React from 'react';
 
 const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, businessInfo }: any) => {
-  // Shop එකේ number එක මුලින්ම check කරලා බලනවා (N/A නොවී ලස්සනට පෙන්වන්න)
-  const shopPhone = businessInfo?.phone || businessInfo?.telephone || '';
+  // Register වෙද්දී දුන්න whatsapp නම්බර් එක හෝ phone නම්බර් එක අරගන්නවා
+  const shopPhone = businessInfo?.whatsapp || businessInfo?.phone || '';
+  // Address එකත් ඒ විදිහටම අරගන්නවා
+  const shopAddress = businessInfo?.address || '';
 
   return (
     <div id="printable-bill-area" style={{ 
@@ -20,12 +22,12 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
           {businessInfo?.name || 'RETAIL SHOP'}
         </h2>
         
-        {/* ඇඩ්‍රස් එක තියෙනවා නම් විතරක් පෙන්වනවා */}
-        {businessInfo?.address && (
-          <p style={{ margin: 0, fontSize: '11px' }}>{businessInfo.address}</p>
+        {/* Address එක තියෙනවා නම් විතරක් පෙන්වනවා */}
+        {shopAddress && (
+          <p style={{ margin: 0, fontSize: '11px' }}>{shopAddress}</p>
         )}
 
-        {/* Shop එකේ number එක තියෙනවා නම් විතරක් පෙන්වනවා (N/A පෙන්වන්නේ නැත) */}
+        {/* WhatsApp/Phone නම්බර් එක තියෙනවා නම් විතරක් පෙන්වනවා */}
         {shopPhone && (
           <p style={{ margin: 0, fontSize: '11px' }}>Tel: {shopPhone}</p>
         )}
@@ -50,7 +52,6 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
             <th style={{ textAlign: 'left', paddingBottom: '1mm' }}>ITEM</th>
             <th style={{ textAlign: 'center' }}>QTY</th>
             <th style={{ textAlign: 'right' }}>PRICE</th>
-            <th style={{ textAlign: 'right' }}>DISC</th>
             <th style={{ textAlign: 'right' }}>TOTAL</th>
           </tr>
         </thead>
@@ -58,8 +59,7 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
           {(cart || []).map((item: any, index: number) => {
             const itemPrice = Number(item?.price) || 0;
             const itemQty = Number(item?.quantity) || 0;
-            const itemDisc = (Number(item?.unitDiscount) || 0) * itemQty;
-            const itemTotal = (itemPrice * itemQty) - itemDisc;
+            const itemTotal = itemPrice * itemQty;
 
             return (
               <tr key={index}>
@@ -68,7 +68,6 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
                 </td>
                 <td style={{ textAlign: 'center' }}>{itemQty}</td>
                 <td style={{ textAlign: 'right' }}>{itemPrice.toFixed(0)}</td>
-                <td style={{ textAlign: 'right' }}>{itemDisc > 0 ? `-${itemDisc.toFixed(0)}` : '0'}</td>
                 <td style={{ textAlign: 'right' }}>{itemTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               </tr>
             );
