@@ -9,7 +9,7 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
       </div>
 
       <div style={{ borderBottom: '1px dashed #000', marginBottom: '2mm', fontSize: '11px' }}>
-        <p style={{ margin: '1mm 0' }}>INV: {invoiceId}</p>
+        <p style={{ margin: '1mm 0' }}>INV: {invoiceId || 'N/A'}</p>
         <p style={{ margin: '1mm 0' }}>DATE: {date} {time}</p>
         <p style={{ margin: '1mm 0' }}>CASHIER: {currentUser?.name || 'ADMIN'}</p>
       </div>
@@ -25,10 +25,10 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
         <tbody>
           {(cart || []).map((item: any, index: number) => (
             <tr key={index}>
-              <td style={{ padding: '1mm 0' }}>{item.name}</td>
+              <td style={{ padding: '1mm 0', textTransform: 'uppercase' }}>{item.name}</td>
               <td style={{ textAlign: 'center' }}>{item.quantity}</td>
               <td style={{ textAlign: 'right' }}>
-                {((item.price || 0) * (item.quantity || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {(Number(item.price || 0) * Number(item.quantity || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </td>
             </tr>
           ))}
@@ -38,13 +38,13 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
       <div style={{ borderTop: '1px dashed #000', marginTop: '3mm', paddingTop: '2mm', fontSize: '14px', fontWeight: 'bold' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>TOTAL:</span>
-          <span>Rs.{(total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          <span>Rs.{(Number(total) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
         </div>
       </div>
 
       <div style={{ textAlign: 'center', marginTop: '6mm', fontSize: '10px' }}>
         <p>THANK YOU COME AGAIN!</p>
-        <p>Software by Digi Solutions</p>
+        <p style={{ fontSize: '8px' }}>POS System by Digi Solutions</p>
       </div>
     </div>
   );
