@@ -2,7 +2,7 @@ import React from 'react';
 
 const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, businessInfo }: any) => {
   return (
-    <div id="bill-content" style={{ 
+    <div id="printable-bill-area" style={{ 
       width: '80mm', 
       padding: '4mm', 
       fontFamily: 'monospace', 
@@ -13,10 +13,11 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
       {/* Shop Header */}
       <div style={{ textAlign: 'center', marginBottom: '4mm' }}>
         <h2 style={{ margin: '0 0 1mm 0', fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-          {businessInfo?.name || 'RETAIL SHOP NAME'}
+          {businessInfo?.name || 'RETAIL SHOP'}
         </h2>
-        <p style={{ margin: 0, fontSize: '11px' }}>{businessInfo?.address || 'Shop Address Here'}</p>
-        <p style={{ margin: 0, fontSize: '11px' }}>Tel: {businessInfo?.phone || '07X XXX XXXX'}</p>
+        <p style={{ margin: 0, fontSize: '11px' }}>{businessInfo?.address || ''}</p>
+        {/* Shop එකේ account එක හදද්දී දීපු number එක මෙතනින් පෙන්වනවා */}
+        <p style={{ margin: 0, fontSize: '11px' }}>Tel: {businessInfo?.phone || 'N/A'}</p>
       </div>
 
       {/* Invoice Meta Data */}
@@ -74,13 +75,13 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
       <div style={{ textAlign: 'center', marginTop: '6mm' }}>
         <p style={{ margin: 0, fontWeight: 'bold' }}>THANK YOU COME AGAIN!</p>
         
-        {/* ඔයාගේ Company Branding එක */}
+        {/* Digi Solutions Branding */}
         <div style={{ marginTop: '4mm', borderTop: '0.5px solid #eee', paddingTop: '2mm' }}>
           <p style={{ margin: 0, fontSize: '9px', color: '#555', letterSpacing: '1px' }}>
             Software by <b>DIGI SOLUTIONS</b>
           </p>
           <p style={{ margin: 0, fontSize: '8px', color: '#777' }}>
-            Contact: 077 123 4567 | www.digisolutions.lk
+            Contact: 0764781212
           </p>
         </div>
       </div>
