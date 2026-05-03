@@ -2,7 +2,7 @@ import React from 'react';
 
 const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, businessInfo }: any) => {
   return (
-    <div style={{ width: '80mm', padding: '5mm', fontFamily: 'monospace', color: '#000' }}>
+    <div id="bill-content" style={{ width: '80mm', padding: '5mm', fontFamily: 'monospace', color: '#000', backgroundColor: '#fff' }}>
       <div style={{ textAlign: 'center', marginBottom: '4mm' }}>
         <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase' }}>
           {businessInfo?.name || 'DIGI SOLUTIONS'}
@@ -30,7 +30,6 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
               <td style={{ padding: '1mm 0', textTransform: 'uppercase' }}>{item?.name || 'ITEM'}</td>
               <td style={{ textAlign: 'center' }}>{item?.quantity || 0}</td>
               <td style={{ textAlign: 'right' }}>
-                {/* මෙතැනදී මිල සහ ප්‍රමාණය දෙකම Number බවට පත් කර ආරක්ෂිතව ගුණ කරයි */}
                 {( (Number(item?.price) || 0) * (Number(item?.quantity) || 0) ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </td>
             </tr>
