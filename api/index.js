@@ -49,25 +49,14 @@ app.post('/api/auth/login', async (req, res) => {
 // GET PRODUCTS
 app.get('/api/products', async (req, res) => {
   await connectDB();
-  const bid = req.query.businessId;
-  res.json(await Product.find({ businessId: bid }).sort({ createdAt: -1 }));
+  try {
+    const bid = req.query.businessId;
+    const products = await Product.find({ businessId: bid }).sort({ createdAt: -1 });
+    res.json(products);
+  } catch (err) { res.status(500).json([]); }
 });
 
-// ADD/UPDATE PRODUCTS
-app.post('/api/products', async (req, res) => {
-  await connectDB();
-  const newProduct = new Product(req.body);
-  await newProduct.save();
-  res.json(newProduct);
-});
-
-app.put('/api/products/:id', async (req, res) => {
-  await connectDB();
-  const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json(updated);
-});
-
-// INVOICE & INVENTORY UPDATE (FIXED)
+// SAVE INVOICE & UPDATE STOCK
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
@@ -76,22 +65,24 @@ app.post('/api/invoices', async (req, res) => {
     const inv = new Invoice({
       invoiceId,
       items: cart,
-      total,
+      total: Number(total) || 0,
       cashier: currentUser?.name || 'Cashier',
       date,
       businessId
     });
     await inv.save();
 
-    // Loop through cart to update inventory
+    // Inventory Update
     for (let item of cart) {
-      await Product.findByIdAndUpdate(item._id, { 
-        $inc: { qty: -item.quantity } 
-      });
+      if (item._id) {
+        await Product.findByIdAndUpdate(item._id, { 
+          $inc: { qty: -Number(item.quantity || 0) } 
+        });
+      }
     }
-
     res.status(201).json(inv);
   } catch (err) {
+    console.error("Invoice Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -105,7 +96,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
     const totalProducts = await Product.countDocuments({ businessId: bid });
     res.json({ totalInvoices, totalProducts, sales: 0 });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json({ totalInvoices: 0, totalProducts: 0, sales: 0 });
   }
 });
 
