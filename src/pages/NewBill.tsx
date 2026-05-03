@@ -159,7 +159,7 @@ const NewBill = () => {
             {searchTerm && filtered.map((p, i) => (
               <div key={p._id} className={`p-5 rounded-3xl flex justify-between items-center transition-all ${selectedIndex === i && cartIndex === -1 ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'bg-white text-slate-600'}`}>
                 <div><h4 className="font-black text-sm uppercase">{p.name}</h4><p className="text-[10px] font-bold opacity-60">Stock: {p.qty}</p></div>
-                <p className="font-black text-lg">Rs.{(Number(p.price) || 0).toLocaleString()}</p>
+                <p className="font-black text-lg">Rs.{(Number(p?.price) || 0).toLocaleString()}</p>
               </div>
             ))}
           </div>
@@ -174,7 +174,7 @@ const NewBill = () => {
               <div key={item._id} className={`flex items-center justify-between p-5 rounded-[2rem] border-4 transition-all ${cartIndex === i ? 'bg-indigo-50 border-indigo-500' : 'bg-slate-50 border-transparent'}`}>
                 <div className="flex-1">
                   <h5 className="font-black text-xs uppercase">{item.name}</h5>
-                  <p className="text-indigo-600 font-black text-xs mt-1">Rs.{(Number(item.price) || 0).toLocaleString()} x {item.quantity}</p>
+                  <p className="text-indigo-600 font-black text-xs mt-1">Rs.{(Number(item?.price) || 0).toLocaleString()} x {item.quantity}</p>
                 </div>
               </div>
             ))}
@@ -185,7 +185,7 @@ const NewBill = () => {
               <span>Rs.{(Number(finalTotal) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
             <button onClick={() => setShowPaymentModal(true)} disabled={isProcessing || cart.length === 0} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase shadow-xl disabled:bg-slate-400">
-               {isProcessing ? "PROCESSING..." : "FINISH BILL (F8)"}
+                {isProcessing ? "PROCESSING..." : "FINISH BILL (F8)"}
             </button>
           </div>
         </div>
