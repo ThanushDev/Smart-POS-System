@@ -21,9 +21,9 @@ const NewBill = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // SAFE CALCULATION
-  const subTotal = cart.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
-  const discountTotal = cart.reduce((sum, item) => sum + ((item.unitDiscount || 0) * (item.quantity || 0)), 0);
+  // safe math logic
+  const subTotal = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
+  const discountTotal = cart.reduce((sum, item) => sum + (Number(item.unitDiscount || 0) * Number(item.quantity || 0)), 0);
   const finalTotal = subTotal - discountTotal;
 
   useEffect(() => {
@@ -32,7 +32,9 @@ const NewBill = () => {
   }, []);
 
   const fetchProducts = () => {
-    axios.get('/api/products?businessId=' + user.businessId).then(res => setProducts(res.data)).catch(() => {});
+    axios.get('/api/products?businessId=' + user.businessId)
+      .then(res => setProducts(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setProducts([]));
   };
 
   const handlePrint = useReactToPrint({
@@ -51,7 +53,7 @@ const NewBill = () => {
     if (currentCart.length === 0 || isProcessing) return;
 
     setIsProcessing(true);
-    const loadingToast = toast.loading("Saving Invoice...");
+    const loadingToast = toast.loading("Finalizing Bill...");
 
     const newInvoice = {
       invoiceId: `INV-${Date.now()}`,
@@ -68,16 +70,19 @@ const NewBill = () => {
       await axios.post('/api/invoices', newInvoice);
       setInvoiceData(newInvoice);
       setShowPaymentModal(false);
-      toast.update(loadingToast, { render: "Order Completed!", type: "success", isLoading: false, autoClose: 2000 });
+      toast.update(loadingToast, { render: "Bill Completed!", type: "success", isLoading: false, autoClose: 2000 });
       fetchProducts();
     } catch (err) {
       setIsProcessing(false);
-      toast.update(loadingToast, { render: "Error Saving Order!", type: "error", isLoading: false, autoClose: 3000 });
+      toast.update(loadingToast, { render: "Error! Check Network", type: "error", isLoading: false, autoClose: 3000 });
     }
   };
 
   useEffect(() => {
-    if (invoiceData) setTimeout(() => handlePrint(), 500);
+    if (invoiceData) {
+      const timer = setTimeout(() => handlePrint(), 500);
+      return () => clearTimeout(timer);
+    }
   }, [invoiceData]);
 
   useEffect(() => {
@@ -154,7 +159,7 @@ const NewBill = () => {
             {searchTerm && filtered.map((p, i) => (
               <div key={p._id} className={`p-5 rounded-3xl flex justify-between items-center transition-all ${selectedIndex === i && cartIndex === -1 ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'bg-white text-slate-600'}`}>
                 <div><h4 className="font-black text-sm uppercase">{p.name}</h4><p className="text-[10px] font-bold opacity-60">Stock: {p.qty}</p></div>
-                <p className="font-black text-lg">Rs.{(p.price || 0).toLocaleString()}</p>
+                <p className="font-black text-lg">Rs.{(Number(p.price) || 0).toLocaleString()}</p>
               </div>
             ))}
           </div>
@@ -162,14 +167,14 @@ const NewBill = () => {
 
         <div className="flex-1 bg-white rounded-[3rem] shadow-2xl flex flex-col border border-slate-200 overflow-hidden">
           <div className={`p-6 ${cartIndex !== -1 ? 'bg-amber-500' : 'bg-slate-800'} text-white`}>
-            <h2 className="text-xl font-black uppercase">CART</h2>
+            <h2 className="text-xl font-black uppercase tracking-tight">Cart Summary</h2>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {cart.map((item, i) => (
               <div key={item._id} className={`flex items-center justify-between p-5 rounded-[2rem] border-4 transition-all ${cartIndex === i ? 'bg-indigo-50 border-indigo-500' : 'bg-slate-50 border-transparent'}`}>
                 <div className="flex-1">
                   <h5 className="font-black text-xs uppercase">{item.name}</h5>
-                  <p className="text-indigo-600 font-black text-xs">Rs.{(item.price || 0).toLocaleString()} x {item.quantity}</p>
+                  <p className="text-indigo-600 font-black text-xs mt-1">Rs.{(Number(item.price) || 0).toLocaleString()} x {item.quantity}</p>
                 </div>
               </div>
             ))}
@@ -177,10 +182,10 @@ const NewBill = () => {
           <div className="p-8 bg-slate-50 border-t-2">
             <div className="flex justify-between font-black text-3xl uppercase text-indigo-600 mb-4">
               <span>Total</span>
-              <span>Rs.{(finalTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span>Rs.{(Number(finalTotal) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
             <button onClick={() => setShowPaymentModal(true)} disabled={isProcessing || cart.length === 0} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase shadow-xl disabled:bg-slate-400">
-               {isProcessing ? "PROCESSING..." : "COMPLETE (F8)"}
+               {isProcessing ? "PROCESSING..." : "FINISH BILL (F8)"}
             </button>
           </div>
         </div>
@@ -201,7 +206,7 @@ const NewBill = () => {
                 </div>
              </div>
              <div className="bg-indigo-600 text-white p-5 rounded-2xl font-black uppercase text-lg animate-pulse shadow-xl">
-                {isProcessing ? "PLEASE WAIT..." : "ENTER TO PRINT"}
+                {isProcessing ? "SAVING..." : "PRESS ENTER TO PRINT"}
              </div>
           </div>
         </div>
