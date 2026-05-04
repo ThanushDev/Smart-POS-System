@@ -20,13 +20,22 @@ const connectDB = async () => {
 
 // --- SCHEMAS ---
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, email: { type: String, unique: true }, password: { type: String }, 
-  role: { type: String, default: 'Admin' }, businessId: String 
+  name: String, 
+  email: { type: String, unique: true }, 
+  password: { type: String }, 
+  address: String,    // අලුතින් එක් කළා
+  whatsapp: String,   // අලුතින් එක් කළා
+  role: { type: String, default: 'Admin' }, 
+  businessId: String 
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, code: String, price: Number, qty: Number, 
-  discount: { type: Number, default: 0 }, businessId: String 
+  name: String, 
+  code: String, 
+  price: Number, 
+  qty: Number, 
+  discount: { type: Number, default: 0 }, 
+  businessId: String 
 }, { timestamps: true }));
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
@@ -34,6 +43,16 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
 }, { timestamps: true }));
 
 // --- ROUTES ---
+
+// REGISTER (අලුතින් එක් කළා)
+app.post('/api/auth/register', async (req, res) => {
+  await connectDB();
+  try {
+    const newUser = new Business(req.body);
+    await newUser.save();
+    res.status(201).json({ success: true });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
 
 // LOGIN
 app.post('/api/auth/login', async (req, res) => {
@@ -56,38 +75,51 @@ app.get('/api/products', async (req, res) => {
   } catch (err) { res.status(500).json([]); }
 });
 
+// ADD PRODUCT (මෙන්න මේක නැති නිසයි 404 ආවේ)
+app.post('/api/products', async (req, res) => {
+  await connectDB();
+  try {
+    const newProduct = new Product(req.body);
+    await newProduct.save();
+    res.status(201).json(newProduct);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// UPDATE PRODUCT (Edit කරද්දී එන 404 එකට විසඳුම)
+app.put('/api/products/:id', async (req, res) => {
+  await connectDB();
+  try {
+    const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE PRODUCT
+app.delete('/api/products/:id', async (req, res) => {
+  await connectDB();
+  try {
+    await Product.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // SAVE INVOICE & UPDATE STOCK
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const { cart, invoiceId, total, currentUser, date, businessId } = req.body;
-
-    const inv = new Invoice({
-      invoiceId,
-      items: cart,
-      total: Number(total) || 0,
-      cashier: currentUser?.name || 'Cashier',
-      date,
-      businessId
-    });
+    const inv = new Invoice({ invoiceId, items: cart, total: Number(total) || 0, cashier: currentUser?.name || 'Cashier', date, businessId });
     await inv.save();
-
-    // Inventory Update
     for (let item of cart) {
       if (item._id) {
-        await Product.findByIdAndUpdate(item._id, { 
-          $inc: { qty: -Number(item.quantity || 0) } 
-        });
+        await Product.findByIdAndUpdate(item._id, { $inc: { qty: -Number(item.quantity || 0) } });
       }
     }
     res.status(201).json(inv);
-  } catch (err) {
-    console.error("Invoice Error:", err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// DASHBOARD STATS (404 FIX)
+// DASHBOARD STATS
 app.get('/api/dashboard/stats', async (req, res) => {
   await connectDB();
   try {
@@ -95,9 +127,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
     const totalInvoices = await Invoice.countDocuments({ businessId: bid });
     const totalProducts = await Product.countDocuments({ businessId: bid });
     res.json({ totalInvoices, totalProducts, sales: 0 });
-  } catch (err) {
-    res.json({ totalInvoices: 0, totalProducts: 0, sales: 0 });
-  }
+  } catch (err) { res.json({ totalInvoices: 0, totalProducts: 0, sales: 0 }); }
 });
 
 app.get('/api/test', (req, res) => res.json({ status: "API is Running" }));
