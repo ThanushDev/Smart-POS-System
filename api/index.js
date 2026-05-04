@@ -20,37 +20,20 @@ const connectDB = async () => {
 
 // --- SCHEMAS ---
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, 
-  email: { type: String, unique: true }, 
-  password: { type: String }, 
-  address: String,
-  whatsapp: String,
-  role: { type: String, default: 'Admin' }, 
-  businessId: String 
+  name: String, email: { type: String, unique: true }, password: { type: String }, address: String, whatsapp: String, role: { type: String, default: 'Admin' }, businessId: String 
 }));
 
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, 
-  code: String, 
-  price: Number, 
-  qty: Number, 
-  discount: { type: Number, default: 0 }, 
-  businessId: String 
+  name: String, code: String, price: Number, qty: Number, discount: { type: Number, default: 0 }, businessId: String 
 }, { timestamps: true }));
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, 
-  items: Array, 
-  total: Number, 
-  cashier: String, 
-  date: String, 
-  businessId: String,
-  paymentMethod: { type: String, default: 'CASH' } // අලුතින් එක් කළා
+  invoiceId: String, items: Array, total: Number, cashier: String, date: String, businessId: String, paymentMethod: { type: String, default: 'CASH' }
 }, { timestamps: true }));
 
 // --- ROUTES ---
 
-// AUTH & REGISTER
+// LOGIN & REGISTER
 app.post('/api/auth/register', async (req, res) => {
   await connectDB();
   try {
@@ -74,8 +57,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/products', async (req, res) => {
   await connectDB();
   try {
-    const bid = req.query.businessId;
-    const products = await Product.find({ businessId: bid }).sort({ createdAt: -1 });
+    const products = await Product.find({ businessId: req.query.businessId }).sort({ createdAt: -1 });
     res.json(products);
   } catch (err) { res.status(500).json([]); }
 });
@@ -105,20 +87,12 @@ app.delete('/api/products/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// INVOICES (SAVE & STOCK UPDATE)
+// INVOICES (SAVE & STOCK UPDATE) - මේකෙන් තමයි MongoDB එකට Data යන්නේ
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const { cart, invoiceId, total, currentUser, date, businessId, paymentMethod } = req.body;
-    const inv = new Invoice({ 
-      invoiceId, 
-      items: cart, 
-      total: Number(total) || 0, 
-      cashier: currentUser?.name || 'Cashier', 
-      date, 
-      businessId,
-      paymentMethod: paymentMethod || 'CASH'
-    });
+    const inv = new Invoice({ invoiceId, items: cart, total: Number(total) || 0, cashier: currentUser?.name || 'Cashier', date, businessId, paymentMethod: paymentMethod || 'CASH' });
     await inv.save();
     for (let item of cart) {
       if (item._id) {
@@ -129,14 +103,22 @@ app.post('/api/invoices', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET INVOICES FOR HISTORY (මෙන්න මේකයි අඩුව තිබ්බේ)
+// GET ALL INVOICES (FOR HISTORY)
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   try {
-    const bid = req.query.businessId;
-    const invoices = await Invoice.find({ businessId: bid }).sort({ createdAt: -1 });
+    const invoices = await Invoice.find({ businessId: req.query.businessId }).sort({ createdAt: -1 });
     res.json(invoices);
   } catch (err) { res.status(500).json([]); }
+});
+
+// GET SINGLE INVOICE (FOR PRINTING)
+app.get('/api/invoices/single/:id', async (req, res) => {
+  await connectDB();
+  try {
+    const invoice = await Invoice.findById(req.params.id);
+    res.json(invoice);
+  } catch (err) { res.status(500).json(null); }
 });
 
 // DELETE INVOICE
@@ -144,7 +126,7 @@ app.delete('/api/invoices/:id', async (req, res) => {
   await connectDB();
   try {
     await Invoice.findByIdAndDelete(req.params.id);
-    res.json({ message: "Invoice Deleted" });
+    res.json({ message: "Deleted" });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -155,15 +137,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
     const bid = req.query.businessId;
     const totalInvoices = await Invoice.countDocuments({ businessId: bid });
     const totalProducts = await Product.countDocuments({ businessId: bid });
-    
-    // Total Revenue එකත් Calculate කරන්න පුළුවන් මෙහෙම
-    const invoices = await Invoice.find({ businessId: bid });
-    const totalSales = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
-    
-    res.json({ totalInvoices, totalProducts, sales: totalSales });
+    res.json({ totalInvoices, totalProducts, sales: 0 });
   } catch (err) { res.json({ totalInvoices: 0, totalProducts: 0, sales: 0 }); }
 });
-
-app.get('/api/test', (req, res) => res.json({ status: "API is Running" }));
 
 export default app;
