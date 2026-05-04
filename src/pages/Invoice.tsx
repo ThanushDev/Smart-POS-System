@@ -7,17 +7,36 @@ import { toast } from 'react-toastify';
 const Invoice = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdmin = user.role === 'Admin';
 
   const fetchData = async () => {
+    if (!user.businessId) return;
     try {
+      setLoading(true);
       const res = await axios.get(`/api/invoices?businessId=${user.businessId}`);
       setInvoices(Array.isArray(res.data) ? res.data : []);
-    } catch (err) { toast.error("Sync error"); }
+    } catch (err) { 
+      toast.error("Sync error: Could not load data"); 
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { if(user.businessId) fetchData(); }, [user.businessId]);
+  useEffect(() => { fetchData(); }, [user.businessId]);
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this invoice permanently?")) return;
+    try {
+      await axios.delete(`/api/invoices/${id}`);
+      toast.success("Invoice deleted");
+      fetchData();
+    } catch (err) {
+      toast.error("Delete failed");
+    }
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
@@ -27,7 +46,12 @@ const Invoice = () => {
           <h1 className="text-3xl font-black italic uppercase tracking-tighter">Billing <span className="text-indigo-600">History</span></h1>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-            <input type="text" placeholder="Search Invoice..." className="pl-10 pr-4 py-3 bg-white rounded-2xl shadow-sm font-bold text-xs outline-none" onChange={(e) => setSearchTerm(e.target.value)} />
+            <input 
+              type="text" 
+              placeholder="Search Invoice ID..." 
+              className="pl-10 pr-4 py-3 bg-white rounded-2xl shadow-sm font-bold text-xs outline-none focus:ring-2 ring-indigo-500 transition-all" 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+            />
           </div>
         </header>
 
@@ -42,19 +66,32 @@ const Invoice = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {invoices.filter(inv => inv.invoiceId.toLowerCase().includes(searchTerm.toLowerCase())).map((inv) => (
-                <tr key={inv._id} className="hover:bg-slate-50 transition-all group">
-                  <td className="px-8 py-6 font-black text-indigo-600 italic">#{inv.invoiceId}</td>
-                  <td className="px-8 py-6 text-xs font-black uppercase text-slate-600">{inv.cashier}</td>
-                  <td className="px-8 py-6 font-black text-slate-800">
-                    Rs. {(Number(inv?.total) || 0).toLocaleString()}
-                  </td>
-                  <td className="px-8 py-6 text-right space-x-2">
-                    <button className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Printer size={18}/></button>
-                    {isAdmin && <button className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 size={18}/></button>}
-                  </td>
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan={4} className="text-center py-10 text-slate-400 font-bold">Loading...</td></tr>
+              ) : (
+                invoices
+                  .filter(inv => inv.invoiceId?.toLowerCase().includes(searchTerm.toLowerCase()))
+                  .map((inv) => (
+                    <tr key={inv._id} className="hover:bg-slate-50 transition-all group">
+                      <td className="px-8 py-6 font-black text-indigo-600 italic">#{inv.invoiceId}</td>
+                      <td className="px-8 py-6 text-xs font-black uppercase text-slate-600">{inv.cashier}</td>
+                      <td className="px-8 py-6 font-black text-slate-800">
+                        Rs. {(Number(inv?.total) || 0).toLocaleString()}
+                      </td>
+                      <td className="px-8 py-6 text-right space-x-2">
+                        <button className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Printer size={18}/></button>
+                        {isAdmin && (
+                          <button 
+                            onClick={() => handleDelete(inv._id)}
+                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"
+                          >
+                            <Trash2 size={18}/>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+              )}
             </tbody>
           </table>
         </div>
