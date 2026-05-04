@@ -96,6 +96,9 @@ const Inventory = () => {
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  // CSS for hiding number input arrows
+  const noArrowsClass = "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
   return (
     <div className="flex h-screen bg-slate-50 italic font-sans">
       <Sidebar />
@@ -113,7 +116,14 @@ const Inventory = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {filteredProducts.map((p) => (
-            <div key={p._id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border group hover:shadow-xl transition-all">
+            <div key={p._id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border group hover:shadow-xl transition-all relative overflow-hidden">
+              {/* Discount Badge */}
+              {p.discount > 0 && (
+                <div className="absolute top-4 right-[-35px] bg-emerald-500 text-white text-[10px] font-black py-1 px-10 rotate-45 shadow-sm uppercase tracking-tighter">
+                  {p.discount}% OFF
+                </div>
+              )}
+
               <div className="flex justify-between mb-4">
                 <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600"><Package size={22}/></div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -122,7 +132,7 @@ const Inventory = () => {
                   <button onClick={() => {if(window.confirm("Delete?")) axios.delete(`${API_URL}/${p._id}`).then(fetchProducts)}} className="p-2 text-slate-400 hover:text-rose-500"><Trash2 size={18}/></button>
                 </div>
               </div>
-              <h3 className="font-black uppercase text-sm truncate">{p.name}</h3>
+              <h3 className="font-black uppercase text-sm truncate pr-8">{p.name}</h3>
               <p className="text-[10px] text-slate-300 font-bold mt-1 tracking-widest">{p.code}</p>
               <div className="mt-6 flex justify-between items-end border-t pt-4 border-slate-50">
                 <div>
@@ -145,13 +155,29 @@ const Inventory = () => {
             <div className="bg-white w-full max-w-md rounded-[3.5rem] p-10 relative shadow-2xl">
               <button onClick={() => setShowModal(false)} className="absolute top-8 right-8 text-slate-300"><X size={24}/></button>
               <h2 className="text-2xl font-black uppercase mb-8 italic text-indigo-600">Product Entry</h2>
-              <form ref={formRef} onKeyDown={handleKeyDown} onSubmit={handleSubmit} className="space-y-4">
-                <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Item Name" required />
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl border font-bold" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} placeholder="Price" required />
-                  <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl border font-bold" value={formData.qty} onChange={(e) => setFormData({...formData, qty: e.target.value})} placeholder="Qty" required />
+              
+              <form ref={formRef} onKeyDown={handleKeyDown} onSubmit={handleSubmit} className="space-y-4 text-left">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 ml-4 mb-1">Item Name</label>
+                  <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g. Fresh Milk" required />
                 </div>
-                <input type="number" className="w-full p-4 bg-emerald-50 rounded-2xl border border-emerald-100 font-bold" value={formData.discount} onChange={(e) => setFormData({...formData, discount: e.target.value})} placeholder="Discount %" />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 ml-4 mb-1">Unit Price</label>
+                    <input type="number" className={`w-full p-4 bg-slate-50 rounded-2xl border font-bold ${noArrowsClass}`} value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} placeholder="0.00" required />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 ml-4 mb-1">Quantity</label>
+                    <input type="number" className={`w-full p-4 bg-slate-50 rounded-2xl border font-bold ${noArrowsClass}`} value={formData.qty} onChange={(e) => setFormData({...formData, qty: e.target.value})} placeholder="0" required />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 ml-4 mb-1">Discount Percentage (%)</label>
+                  <input type="number" className={`w-full p-4 bg-emerald-50 rounded-2xl border border-emerald-100 font-bold ${noArrowsClass}`} value={formData.discount} onChange={(e) => setFormData({...formData, discount: e.target.value})} placeholder="0" />
+                </div>
+
                 <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase mt-4 shadow-xl">Save Item</button>
               </form>
             </div>
