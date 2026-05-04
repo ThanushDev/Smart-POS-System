@@ -19,7 +19,6 @@ const NewBill = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // --- Safe Math Logic ---
   const subTotal = cart.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0);
   const discountTotal = cart.reduce((sum, item) => sum + (Number(item.unitDiscount || 0) * Number(item.quantity || 0)), 0);
   const finalTotal = subTotal - discountTotal;
@@ -35,7 +34,6 @@ const NewBill = () => {
       .catch(() => setProducts([]));
   };
 
-  // --- අර Barcode එකේදී ගත්ත Window Trick එක (Print Logic) ---
   const handlePrintInNewWindow = () => {
     const printContent = document.getElementById('printable-bill-area');
     if (!printContent) return;
@@ -60,12 +58,10 @@ const NewBill = () => {
       printWindow.document.close();
       printWindow.focus();
       
-      // Delay එකක් දීලා print dialog එක open කරනවා
       setTimeout(() => {
         printWindow.print();
         printWindow.close();
         
-        // Print වුණාට පස්සේ බිල reset කරනවා
         setCart([]);
         setInvoiceData(null);
         setCartIndex(-1);
@@ -86,7 +82,7 @@ const NewBill = () => {
       invoiceId: `INV-${Date.now()}`,
       cart: currentCart,
       total: total || 0,
-      paymentMethod: currentMethod,
+      paymentMethod: currentMethod, // Payment method එක මෙතනට එකතු කළා
       currentUser: user,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
@@ -112,7 +108,6 @@ const NewBill = () => {
     }
   }, [invoiceData]);
 
-  // --- Keyboard Shortcuts Logic ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showPaymentModal) {
@@ -175,23 +170,37 @@ const NewBill = () => {
     <div className="flex h-screen bg-slate-100 font-sans overflow-hidden italic">
       <Sidebar />
       <main className="flex-1 p-6 flex gap-6 overflow-hidden">
-        {/* Search Section */}
         <div className="flex-[1.5] flex flex-col">
           <div className={`bg-white p-6 rounded-[2.5rem] shadow-md flex items-center gap-4 mb-4 border-4 transition-all ${cartIndex === -1 ? 'border-indigo-500' : 'border-transparent opacity-40'}`}>
             <Search className="text-indigo-600" size={24} />
             <input ref={searchInputRef} type="text" placeholder="F2: SEARCH PRODUCT" className="flex-1 outline-none font-black text-xl uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
           <div className="space-y-2 overflow-y-auto">
-            {searchTerm && filtered.map((p, i) => (
-              <div key={p._id} className={`p-5 rounded-3xl flex justify-between items-center transition-all ${selectedIndex === i && cartIndex === -1 ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'bg-white text-slate-600'}`}>
-                <div><h4 className="font-black text-sm uppercase">{p.name}</h4><p className="text-[10px] font-bold opacity-60">Stock: {p.qty}</p></div>
-                <p className="font-black text-lg">Rs.{(Number(p?.price) || 0).toLocaleString()}</p>
-              </div>
-            ))}
+            {searchTerm && filtered.map((p, i) => {
+              const hasDiscount = p.discount > 0;
+              const discountedPrice = p.price - ((p.price * (p.discount || 0)) / 100);
+              
+              return (
+                <div key={p._id} className={`p-5 rounded-3xl flex justify-between items-center transition-all ${selectedIndex === i && cartIndex === -1 ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'bg-white text-slate-600'}`}>
+                  <div>
+                    <h4 className="font-black text-sm uppercase">{p.name}</h4>
+                    <p className="text-[10px] font-bold opacity-60">Stock: {p.qty}</p>
+                    {hasDiscount && (
+                      <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black tracking-tighter">
+                        {p.discount}% OFF
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    {hasDiscount && <p className="text-[10px] line-through opacity-50">Rs.{p.price}</p>}
+                    <p className="font-black text-lg">Rs.{(hasDiscount ? discountedPrice : p.price).toLocaleString()}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Cart Section */}
         <div className="flex-1 bg-white rounded-[3rem] shadow-2xl flex flex-col border border-slate-200 overflow-hidden">
           <div className={`p-6 ${cartIndex !== -1 ? 'bg-amber-500' : 'bg-slate-800'} text-white`}>
             <h2 className="text-xl font-black uppercase tracking-tight">Cart Summary</h2>
@@ -218,7 +227,6 @@ const NewBill = () => {
         </div>
       </main>
 
-      {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[999]">
           <div className="bg-white p-12 rounded-[4rem] text-center shadow-2xl border-8 border-indigo-600 w-[500px]">
@@ -240,7 +248,6 @@ const NewBill = () => {
         </div>
       )}
 
-      {/* Hidden Print Section */}
       <div className="hidden">
         <div id="printable-bill-area">
           {invoiceData && <PrintableBill {...invoiceData} businessInfo={user} />}
