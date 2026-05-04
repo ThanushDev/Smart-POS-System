@@ -1,16 +1,14 @@
 import React from 'react';
 
-const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, businessInfo }: any) => {
-  // Register වෙද්දී දුන්න whatsapp නම්බර් එක හෝ phone නම්බර් එක අරගන්නවා
+const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, businessInfo, paymentMethod }: any) => {
   const shopPhone = businessInfo?.whatsapp || businessInfo?.phone || '';
-  // Address එකත් ඒ විදිහටම අරගන්නවා
   const shopAddress = businessInfo?.address || '';
 
   return (
     <div id="printable-bill-area" style={{ 
       width: '80mm', 
       padding: '4mm', 
-      fontFamily: 'monospace', 
+      fontFamily: "'Courier New', Courier, monospace", // Thermal printers වලට standard font එක
       color: '#000', 
       backgroundColor: '#fff',
       fontSize: '12px',
@@ -22,12 +20,10 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
           {businessInfo?.name || 'RETAIL SHOP'}
         </h2>
         
-        {/* Address එක තියෙනවා නම් විතරක් පෙන්වනවා */}
         {shopAddress && (
           <p style={{ margin: 0, fontSize: '11px' }}>{shopAddress}</p>
         )}
 
-        {/* WhatsApp/Phone නම්බර් එක තියෙනවා නම් විතරක් පෙන්වනවා */}
         {shopPhone && (
           <p style={{ margin: 0, fontSize: '11px' }}>Tel: {shopPhone}</p>
         )}
@@ -37,11 +33,15 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
       <div style={{ borderBottom: '1px dashed #000', borderTop: '1px dashed #000', padding: '2mm 0', marginBottom: '2mm', fontSize: '11px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>INV: {invoiceId}</span>
-          <span>CASHIER: {currentUser?.name || 'ADMIN'}</span>
+          <span>DATE: {date}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>DATE: {date}</span>
+          <span>CASHIER: {currentUser?.name?.split(' ')[0] || 'ADMIN'}</span>
           <span>TIME: {time}</span>
+        </div>
+        {/* Payment Method එක බිල් එකට එකතු කළා */}
+        <div style={{ textAlign: 'center', marginTop: '1mm', fontWeight: 'bold', borderTop: '0.5px solid #eee', paddingTop: '1mm' }}>
+          PAYMENT: {paymentMethod}
         </div>
       </div>
 
@@ -68,7 +68,7 @@ const PrintableBill = ({ invoiceId, cart, total, currentUser, date, time, busine
                 </td>
                 <td style={{ textAlign: 'center' }}>{itemQty}</td>
                 <td style={{ textAlign: 'right' }}>{itemPrice.toFixed(0)}</td>
-                <td style={{ textAlign: 'right' }}>{itemTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td style={{ textAlign: 'right' }}>{itemTotal.toFixed(2)}</td>
               </tr>
             );
           })}
