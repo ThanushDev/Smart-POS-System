@@ -28,12 +28,17 @@ const Product = mongoose.models.Product || mongoose.model('Product', new mongoos
 }, { timestamps: true }));
 
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
-  invoiceId: String, items: Array, total: Number, cashier: String, date: String, businessId: String, paymentMethod: { type: String, default: 'CASH' }
-}, { timestamps: true }));
+  invoiceId: String, 
+  items: Array, 
+  total: Number, 
+  cashier: String, 
+  date: String, 
+  businessId: String, 
+  paymentMethod: { type: String, default: 'CASH' }
+}, { timestamps: true })); // Timestamps නිසා අපිට date/time ලේසියෙන් ගන්න පුළුවන්
 
 // --- ROUTES ---
 
-// LOGIN & REGISTER
 app.post('/api/auth/register', async (req, res) => {
   await connectDB();
   try {
@@ -53,7 +58,6 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
-// PRODUCTS
 app.get('/api/products', async (req, res) => {
   await connectDB();
   try {
@@ -87,12 +91,19 @@ app.delete('/api/products/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// INVOICES (SAVE & STOCK UPDATE) - මේකෙන් තමයි MongoDB එකට Data යන්නේ
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
     const { cart, invoiceId, total, currentUser, date, businessId, paymentMethod } = req.body;
-    const inv = new Invoice({ invoiceId, items: cart, total: Number(total) || 0, cashier: currentUser?.name || 'Cashier', date, businessId, paymentMethod: paymentMethod || 'CASH' });
+    const inv = new Invoice({ 
+      invoiceId, 
+      items: cart, 
+      total: Number(total) || 0, 
+      cashier: currentUser?.name || 'Cashier', 
+      date, 
+      businessId, 
+      paymentMethod: paymentMethod || 'CASH' 
+    });
     await inv.save();
     for (let item of cart) {
       if (item._id) {
@@ -103,7 +114,6 @@ app.post('/api/invoices', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET ALL INVOICES (FOR HISTORY)
 app.get('/api/invoices', async (req, res) => {
   await connectDB();
   try {
@@ -112,7 +122,7 @@ app.get('/api/invoices', async (req, res) => {
   } catch (err) { res.status(500).json([]); }
 });
 
-// GET SINGLE INVOICE (FOR PRINTING)
+// *** අලුත් ROUTE එක: පරණ බිල්පතක ID එකෙන් විස්තර ගැනීම ***
 app.get('/api/invoices/single/:id', async (req, res) => {
   await connectDB();
   try {
@@ -121,7 +131,6 @@ app.get('/api/invoices/single/:id', async (req, res) => {
   } catch (err) { res.status(500).json(null); }
 });
 
-// DELETE INVOICE
 app.delete('/api/invoices/:id', async (req, res) => {
   await connectDB();
   try {
@@ -130,7 +139,6 @@ app.delete('/api/invoices/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// DASHBOARD STATS
 app.get('/api/dashboard/stats', async (req, res) => {
   await connectDB();
   try {
