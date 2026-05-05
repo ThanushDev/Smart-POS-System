@@ -14,6 +14,7 @@ import Invoice from './pages/Invoice';
 import Report from './pages/Report';
 import Accounts from './pages/Accounts';
 import NotFound from './pages/NotFound';
+import PrintPage from './pages/PrintPage'; // අලුතින් හදන PrintPage එක
 
 const App: React.FC = () => {
   const userData = localStorage.getItem('user');
@@ -28,13 +29,14 @@ const App: React.FC = () => {
             <Route path="/register" element={<Register />} />
             
             <Route path="/dashboard" element={<Dashboard />} />
-            {/* Oyaage parana path eka '/pos' */}
             <Route path="/pos" element={<NewBill />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/invoice" element={<Invoice />} />
             <Route path="/report" element={<Report />} />
             
-            {/* Oyaage parana path eka '/account' */}
+            {/* අලුත් Print Route එක */}
+            <Route path="/print" element={<PrintPage />} />
+            
             <Route 
               path="/account" 
               element={user?.role === 'Admin' ? <Accounts /> : <Navigate to="/dashboard" replace />} 
