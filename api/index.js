@@ -19,14 +19,38 @@ const connectDB = async () => {
 };
 
 // --- SCHEMAS ---
+
+// 1. Business Schema (Admin/Shop Owner)
 const Business = mongoose.models.Business || mongoose.model('Business', new mongoose.Schema({
-  name: String, email: { type: String, unique: true }, password: { type: String }, address: String, whatsapp: String, role: { type: String, default: 'Admin' }, businessId: String 
+  name: String, 
+  email: { type: String, unique: true }, 
+  password: String, 
+  address: String, 
+  whatsapp: String, 
+  role: { type: String, default: 'Admin' }, 
+  businessId: String 
 }));
 
-const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
-  name: String, code: String, price: Number, qty: Number, discount: { type: Number, default: 0 }, businessId: String 
+// 2. User Schema (Staff Members) - මෙය අලුතින් එකතු කළා
+const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
+  name: String,
+  email: { type: String, unique: true },
+  password: String,
+  role: { type: String, default: 'Staff' },
+  businessId: String
 }, { timestamps: true }));
 
+// 3. Product Schema
+const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
+  name: String, 
+  code: String, 
+  price: Number, 
+  qty: Number, 
+  discount: { type: Number, default: 0 }, 
+  businessId: String 
+}, { timestamps: true }));
+
+// 4. Invoice Schema
 const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoose.Schema({
   invoiceId: String, 
   items: Array, 
@@ -35,10 +59,11 @@ const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', new mongoos
   date: String, 
   businessId: String, 
   paymentMethod: { type: String, default: 'CASH' }
-}, { timestamps: true })); // Timestamps නිසා අපිට date/time ලේසියෙන් ගන්න පුළුවන්
+}, { timestamps: true }));
 
 // --- ROUTES ---
 
+// AUTH ROUTES
 app.post('/api/auth/register', async (req, res) => {
   await connectDB();
   try {
@@ -58,6 +83,26 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
+// STAFF USER ROUTES - මේවා තමයි Accounts.tsx එකට අවශ්‍ය වෙන්නේ
+app.get('/api/users', async (req, res) => {
+  await connectDB();
+  try {
+    const { businessId } = req.query;
+    const users = await User.find({ businessId });
+    res.json(users);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/users/add', async (req, res) => {
+  await connectDB();
+  try {
+    const newUser = new User(req.body);
+    await newUser.save();
+    res.status(201).json(newUser);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PRODUCT ROUTES
 app.get('/api/products', async (req, res) => {
   await connectDB();
   try {
@@ -91,6 +136,7 @@ app.delete('/api/products/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// INVOICE ROUTES
 app.post('/api/invoices', async (req, res) => {
   await connectDB();
   try {
@@ -122,7 +168,6 @@ app.get('/api/invoices', async (req, res) => {
   } catch (err) { res.status(500).json([]); }
 });
 
-// *** අලුත් ROUTE එක: පරණ බිල්පතක ID එකෙන් විස්තර ගැනීම ***
 app.get('/api/invoices/single/:id', async (req, res) => {
   await connectDB();
   try {
@@ -131,14 +176,24 @@ app.get('/api/invoices/single/:id', async (req, res) => {
   } catch (err) { res.status(500).json(null); }
 });
 
-app.delete('/api/invoices/:id', async (req, res) => {
+// DELETE BUSINESS ROUTE
+app.post('/api/auth/delete-business', async (req, res) => {
   await connectDB();
   try {
-    await Invoice.findByIdAndDelete(req.params.id);
-    res.json({ message: "Deleted" });
+    const { businessId, password, adminId } = req.body;
+    const admin = await Business.findOne({ _id: adminId, password: password });
+    if (!admin) return res.status(401).json({ message: "Incorrect Password" });
+
+    await Business.findOneAndDelete({ businessId });
+    await Product.deleteMany({ businessId });
+    await Invoice.deleteMany({ businessId });
+    await User.deleteMany({ businessId });
+
+    res.json({ message: "Deleted successfully" });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// STATS
 app.get('/api/dashboard/stats', async (req, res) => {
   await connectDB();
   try {
