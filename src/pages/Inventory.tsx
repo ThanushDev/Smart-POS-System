@@ -38,7 +38,6 @@ const Inventory = () => {
     const businessName = user.name || "DIGI SOLUTIONS";
     const printWindow = window.open('', '_blank', 'width=600,height=600');
     if (!printWindow) return;
-
     printWindow.document.write(`
       <html>
         <head>
@@ -94,55 +93,70 @@ const Inventory = () => {
     } catch (err) { toast.error("Error saving!"); }
   };
 
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.code.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  // CSS for hiding number input arrows
   const noArrowsClass = "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
 
   return (
     <div className="flex h-screen bg-slate-50 italic font-sans">
       <Sidebar />
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="flex justify-between items-center mb-10">
-          <h1 className="text-3xl font-black uppercase italic tracking-tight">Stock <span className="text-indigo-600">Inventory</span></h1>
-          <div className="flex gap-3">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-              <input type="text" placeholder="Search..." className="pl-12 pr-4 py-3 rounded-2xl bg-white border outline-none font-bold text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto pt-20 md:pt-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 md:mb-10">
+          <h1 className="text-2xl md:text-3xl font-black uppercase italic tracking-tight">
+            Stock <span className="text-indigo-600">Inventory</span>
+          </h1>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="pl-10 pr-4 py-3 rounded-2xl bg-white border outline-none font-bold text-sm w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <button onClick={() => openModal()} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs">Add Item</button>
+            <button onClick={() => openModal()} className="bg-indigo-600 text-white px-5 py-3 rounded-2xl font-black uppercase text-xs whitespace-nowrap">
+              + Add
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {filteredProducts.map((p) => (
-            <div key={p._id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border group hover:shadow-xl transition-all relative overflow-hidden">
-              {/* Discount Badge */}
+            <div key={p._id} className="bg-white p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-sm border group hover:shadow-xl transition-all relative overflow-hidden">
               {p.discount > 0 && (
-                <div className="absolute top-4 right-[-35px] bg-emerald-500 text-white text-[10px] font-black py-1 px-10 rotate-45 shadow-sm uppercase tracking-tighter">
+                <div className="absolute top-3 right-[-30px] md:top-4 md:right-[-35px] bg-emerald-500 text-white text-[9px] font-black py-0.5 px-8 md:px-10 rotate-45 shadow-sm uppercase tracking-tighter">
                   {p.discount}% OFF
                 </div>
               )}
 
-              <div className="flex justify-between mb-4">
-                <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600"><Package size={22}/></div>
+              <div className="flex justify-between mb-3 md:mb-4">
+                <div className="p-2 md:p-3 bg-indigo-50 rounded-xl md:rounded-2xl text-indigo-600">
+                  <Package size={18} />
+                </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => triggerPrint(p)} className="p-2 text-slate-400 hover:text-indigo-600"><Printer size={18}/></button>
-                  <button onClick={() => openModal(p)} className="p-2 text-slate-400 hover:text-amber-500"><Edit3 size={18}/></button>
-                  <button onClick={() => {if(window.confirm("Delete?")) axios.delete(`${API_URL}/${p._id}`).then(fetchProducts)}} className="p-2 text-slate-400 hover:text-rose-500"><Trash2 size={18}/></button>
+                  <button onClick={() => triggerPrint(p)} className="p-1.5 text-slate-400 hover:text-indigo-600"><Printer size={15}/></button>
+                  <button onClick={() => openModal(p)} className="p-1.5 text-slate-400 hover:text-amber-500"><Edit3 size={15}/></button>
+                  <button onClick={() => {if(window.confirm("Delete?")) axios.delete(`${API_URL}/${p._id}`).then(fetchProducts)}} className="p-1.5 text-slate-400 hover:text-rose-500"><Trash2 size={15}/></button>
                 </div>
               </div>
-              <h3 className="font-black uppercase text-sm truncate pr-8">{p.name}</h3>
-              <p className="text-[10px] text-slate-300 font-bold mt-1 tracking-widest">{p.code}</p>
-              <div className="mt-6 flex justify-between items-end border-t pt-4 border-slate-50">
+              <h3 className="font-black uppercase text-xs md:text-sm truncate pr-6">{p.name}</h3>
+              <p className="text-[9px] md:text-[10px] text-slate-300 font-bold mt-1 tracking-widest">{p.code}</p>
+              <div className="mt-4 md:mt-6 flex justify-between items-end border-t pt-3 md:pt-4 border-slate-50">
                 <div>
-                  <p className="text-[9px] text-slate-400 font-black uppercase">Price</p>
-                  <p className="text-indigo-600 font-black text-lg">
+                  <p className="text-[8px] md:text-[9px] text-slate-400 font-black uppercase">Price</p>
+                  <p className="text-indigo-600 font-black text-base md:text-lg">
                     Rs.{(Number(p?.price) || 0).toLocaleString()}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[9px] text-slate-400 font-black uppercase">Stock</p>
+                  <p className="text-[8px] md:text-[9px] text-slate-400 font-black uppercase">Stock</p>
                   <p className="text-xs font-black text-slate-400">{p.qty} PCS</p>
                 </div>
               </div>
@@ -150,18 +164,18 @@ const Inventory = () => {
           ))}
         </div>
 
+        {/* Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-            <div className="bg-white w-full max-w-md rounded-[3.5rem] p-10 relative shadow-2xl">
-              <button onClick={() => setShowModal(false)} className="absolute top-8 right-8 text-slate-300"><X size={24}/></button>
-              <h2 className="text-2xl font-black uppercase mb-8 italic text-indigo-600">Product Entry</h2>
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[100] p-0 sm:p-4">
+            <div className="bg-white w-full sm:max-w-md rounded-t-[2.5rem] sm:rounded-[3.5rem] p-8 sm:p-10 relative shadow-2xl max-h-[95vh] overflow-y-auto">
+              <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-slate-300 p-2"><X size={22}/></button>
+              <h2 className="text-xl md:text-2xl font-black uppercase mb-6 md:mb-8 italic text-indigo-600">Product Entry</h2>
               
               <form ref={formRef} onKeyDown={handleKeyDown} onSubmit={handleSubmit} className="space-y-4 text-left">
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 ml-4 mb-1">Item Name</label>
                   <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g. Fresh Milk" required />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-black uppercase text-slate-400 ml-4 mb-1">Unit Price</label>
@@ -172,12 +186,10 @@ const Inventory = () => {
                     <input type="number" className={`w-full p-4 bg-slate-50 rounded-2xl border font-bold ${noArrowsClass}`} value={formData.qty} onChange={(e) => setFormData({...formData, qty: e.target.value})} placeholder="0" required />
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-400 ml-4 mb-1">Discount Percentage (%)</label>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 ml-4 mb-1">Discount (%)</label>
                   <input type="number" className={`w-full p-4 bg-emerald-50 rounded-2xl border border-emerald-100 font-bold ${noArrowsClass}`} value={formData.discount} onChange={(e) => setFormData({...formData, discount: e.target.value})} placeholder="0" />
                 </div>
-
                 <button type="submit" className="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase mt-4 shadow-xl">Save Item</button>
               </form>
             </div>
